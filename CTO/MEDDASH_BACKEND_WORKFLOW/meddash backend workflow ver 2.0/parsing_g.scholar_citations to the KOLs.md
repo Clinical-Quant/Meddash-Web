@@ -53,3 +53,54 @@ Instead, citations will be pulled strictly on-demand via the Phase 2 KOL dashboa
 Please review this approach. If approved, we will begin by provisioning the `kol_scholar_metrics` table in Supabase and writing the Python extractor. 
 
 *Question:* Do you prefer we proceed with a third-party bridge like **SerpApi**, or attempt the open-source **scholarly + proxy** route?
+
+---
+
+## Phase 3: Campaign Sandbox Integration (2026-03-26)
+
+> **Decision**: SerpApi confirmed as the API provider. Scholar parsing is now **Step 3** in the Campaign Sandbox pipeline, positioned between HITL Disambiguation and Client Export.
+
+### Updated Sandbox Button Flow
+
+```
+1. Run Disambiguation Engine        → Tier 1 auto-verify (ORCID, ≥0.70 score, standalone)
+2. Human-in-the-Loop Disambiguation → Tier 2 HITL + Gemini Flash 2.5
+3. Google Scholar Citation Parsing   → 4-tier citation lookup (checkbox-selected KOLs)  ← NEW
+4. Export Client Text Report         → enriched with citation metrics
+5. Commit to Global DB              → scholar metrics + pull_ids persist
+```
+
+### Checkbox-Based Selective Sync (User-Controlled)
+
+Instead of batch mode, the UI provides **per-KOL checkboxes** and a **Select All** toggle:
+
+| UI Element | Behavior |
+|------------|----------|
+| Checkbox per KOL row | User manually ticks which KOLs to enrich |
+| Select All / Deselect All | Header checkbox toggles all rows |
+| "3. Run Scholar Parsing" button | Fires only for checked KOLs (sends `kol_ids[]` to API) |
+| Progress tracker | Shows `Processing 3 of 12 selected...` with per-KOL status badges |
+| Rate limiter | Disables checkbox for KOLs synced within last 7 days |
+
+**API Payload**: `POST /api/sandbox/run_scholar_sync { kol_ids: [12, 45, 67], pull_id: "002" }`
+
+### Database Changes
+- `kols_staging` + `kols`: Add columns `scholar_status TEXT DEFAULT 'pending'`, `scholar_id TEXT`
+- `kol_scholar_metrics`: Already provisioned (no changes)
+- `scholar_review_queue`: Already provisioned (no changes)
+
+### New API Routes
+- `POST /api/sandbox/run_scholar_sync` — Iterate selected KOLs through 4-tier disambiguation
+- `GET /api/sandbox/scholar_status?pull_id=X` — Per-KOL scholar sync status for UI badges
+- `GET /api/sandbox/scholar_review_queue?pull_id=X` — Tier 4 failed candidates for manual review
+- `POST /api/sandbox/resolve_scholar` — Human approves/rejects a Scholar candidate
+
+### Automation-Ready Design
+All sandbox steps are **idempotent CLI scripts** with `--pull_id` arguments:
+```bash
+python run_pipeline.py --pull_id 003
+python kol_disambiguator.py --pull_id 003
+python sync_scholar_citations.py --pull_id 003
+python export_sandbox.py --pull_id 003
+```
+

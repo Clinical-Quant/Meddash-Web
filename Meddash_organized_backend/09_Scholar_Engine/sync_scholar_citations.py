@@ -251,8 +251,131 @@ def sync_single_kol(kol_id: str):
             print("Manual review entry written.")
 
 
+def sync_sandbox_selected(pull_id: str, kol_ids: list):
+    """
+    Process selected KOLs from kols_staging through the 4-tier Scholar disambiguation.
+    Updates scholar_status and scholar_id columns on kols_staging.
+    Writes to scholar_sync_{pull_id}.log for System Health streaming.
+    """
+    import logging
+    log_dir = os.path.join(base_dir, "07_DevOps_Observability")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, f"scholar_sync_{pull_id}.log")
+    
+    file_handler = logging.FileHandler(log_path, mode='w')
+    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger = logging.getLogger(f"scholar_{pull_id}")
+    logger.addHandler(file_handler)
+    logger.setLevel(logging.INFO)
+    
+    logger.info(f"=== Scholar Sync Starting for pull_id: {pull_id} ({len(kol_ids)} KOLs selected) ===")
+    
+    results = []
+    
+    with pg_engine.connect() as conn:
+        # Ensure scholar columns exist on kols_staging
+        try:
+            conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_status TEXT DEFAULT 'pending'"))
+            conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_id TEXT"))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+        
+        for idx, kol_id in enumerate(kol_ids):
+            logger.info(f"[{idx+1}/{len(kol_ids)}] Processing KOL ID: {kol_id}")
+            
+            # Check if already mapped in kol_scholar_metrics
+            existing = conn.execute(
+                text("SELECT scholar_id FROM kol_scholar_metrics WHERE kol_id::text = :k LIMIT 1"),
+                {"k": str(kol_id)}
+            ).fetchone()
+            
+            if existing:
+                scholar_id = existing[0]
+                logger.info(f"  Existing scholar_id found: {scholar_id}. Refreshing metrics...")
+                author_data = fetch_scholar_author_data(scholar_id)
+                metrics = extract_metrics(author_data)
+                upsert_metrics(conn, kol_id, scholar_id, metrics)
+                conn.execute(text("UPDATE kols_staging SET scholar_status = 'scholar_verified', scholar_id = :sid WHERE id = :id"),
+                             {"sid": scholar_id, "id": kol_id})
+                conn.commit()
+                results.append({"kol_id": kol_id, "status": "scholar_verified", "scholar_id": scholar_id, "tier": "CACHED", **metrics})
+                logger.info(f"  ✅ Scholar metrics refreshed. Citations: {metrics['total_citations']}, h-index: {metrics['h_index']}")
+                continue
+            
+            # Pull KOL data from staging table
+            kol_row = conn.execute(text("""
+                SELECT first_name || ' ' || last_name AS name, orcid, institution, specialty
+                FROM kols_staging WHERE id = :k LIMIT 1
+            """), {"k": kol_id}).fetchone()
+            
+            if not kol_row:
+                logger.warning(f"  KOL {kol_id} not found in kols_staging.")
+                results.append({"kol_id": kol_id, "status": "not_found"})
+                continue
+            
+            kol_name, kol_orcid, kol_institution, kol_specialty = kol_row
+            logger.info(f"  KOL: {kol_name} | ORCID: {kol_orcid} | Institution: {kol_institution}")
+            
+            # Pull publication titles for Tier 2 matching
+            try:
+                pub_rows = conn.execute(text("""
+                    SELECT p.title FROM kol_authorships ka
+                    JOIN publications p ON ka.publication_id = p.id
+                    WHERE ka.kol_id = :k AND p.title IS NOT NULL LIMIT 15
+                """), {"k": kol_id}).fetchall()
+                kol_pub_titles = [r[0] for r in pub_rows]
+            except Exception:
+                kol_pub_titles = []
+            
+            # Search Scholar for candidates
+            candidates = search_scholar_candidates(kol_name)
+            if not candidates:
+                logger.warning(f"  No Scholar profiles found for '{kol_name}'.")
+                conn.execute(text("UPDATE kols_staging SET scholar_status = 'scholar_failed' WHERE id = :id"), {"id": kol_id})
+                conn.commit()
+                results.append({"kol_id": kol_id, "status": "scholar_failed", "reason": "no_candidates"})
+                continue
+            
+            # Run 4-tier disambiguation
+            scholar_id, tier_passed, metrics = disambiguate(
+                kol_id, kol_name, kol_orcid, kol_institution, kol_specialty,
+                kol_pub_titles, candidates
+            )
+            
+            if scholar_id and metrics:
+                logger.info(f"  ✅ {tier_passed}: scholar_id={scholar_id}, Citations={metrics['total_citations']}, h={metrics['h_index']}")
+                upsert_metrics(conn, kol_id, scholar_id, metrics)
+                conn.execute(text("UPDATE kols_staging SET scholar_status = 'scholar_verified', scholar_id = :sid WHERE id = :id"),
+                             {"sid": scholar_id, "id": kol_id})
+                conn.commit()
+                results.append({"kol_id": kol_id, "status": "scholar_verified", "scholar_id": scholar_id, "tier": tier_passed, **metrics})
+            else:
+                logger.info(f"  🔍 TIER_4_MANUAL_REVIEW: Writing to scholar_review_queue...")
+                write_review_queue(conn, kol_id, kol_name, candidates)
+                conn.execute(text("UPDATE kols_staging SET scholar_status = 'scholar_review' WHERE id = :id"), {"id": kol_id})
+                conn.commit()
+                results.append({"kol_id": kol_id, "status": "scholar_review", "tier": "TIER_4_MANUAL_REVIEW"})
+    
+    logger.info(f"=== Scholar Sync Complete: {sum(1 for r in results if r.get('status') == 'scholar_verified')} verified, "
+                f"{sum(1 for r in results if r.get('status') == 'scholar_review')} pending review, "
+                f"{sum(1 for r in results if r.get('status') == 'scholar_failed')} failed ===")
+    
+    return results
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Sync Scholar metrics for a single KOL.")
-    parser.add_argument("--kol_id", required=True, help="ID of the KOL to sync")
+    parser = argparse.ArgumentParser(description="Sync Scholar metrics for KOLs.")
+    parser.add_argument("--kol_id", help="ID of a single KOL to sync (global kols table)")
+    parser.add_argument("--pull_id", help="Pull ID for sandbox batch sync")
+    parser.add_argument("--kol_ids", help="Comma-separated KOL IDs to sync from staging", default="")
     args = parser.parse_args()
-    sync_single_kol(args.kol_id)
+    
+    if args.pull_id and args.kol_ids:
+        ids = [int(x.strip()) for x in args.kol_ids.split(",") if x.strip()]
+        sync_sandbox_selected(args.pull_id, ids)
+    elif args.kol_id:
+        sync_single_kol(args.kol_id)
+    else:
+        print("Usage: --kol_id <id> OR --pull_id <pid> --kol_ids <id1,id2,id3>")
+

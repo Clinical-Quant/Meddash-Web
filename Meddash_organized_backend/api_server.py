@@ -656,7 +656,173 @@ def resolve_pair(payload: ResolvePairPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ===== STEP 3: GOOGLE SCHOLAR CITATION PARSING ROUTES =====
+
+class ScholarSyncPayload(BaseModel):
+    kol_ids: list
+    pull_id: str
+
+@app.post("/api/sandbox/run_scholar_sync")
+def run_scholar_sync(payload: ScholarSyncPayload):
+    """Launches the Scholar sync script for selected KOL IDs in a background thread."""
+    if not SERPAPI_KEY_PRESENT:
+        raise HTTPException(status_code=503, detail="SERPAPI_KEY not configured in .env.")
+    if not payload.kol_ids:
+        raise HTTPException(status_code=400, detail="No KOL IDs provided.")
+    
+    kol_ids_str = ",".join(str(x) for x in payload.kol_ids)
+    script_path = os.path.join(base_dir, "09_Scholar_Engine", "sync_scholar_citations.py")
+    log_path = os.path.join(base_dir, "07_DevOps_Observability", f"scholar_sync_{payload.pull_id}.log")
+    
+    cmd = f"python \"{script_path}\" --pull_id {payload.pull_id} --kol_ids {kol_ids_str}"
+    
+    def run_in_bg():
+        with open(log_path, "w") as log_f:
+            log_f.write(f"Executing Scholar Sync: {cmd}\n")
+        subprocess.run(cmd, shell=True, cwd=base_dir)
+    
+    thread = threading.Thread(target=run_in_bg, daemon=True)
+    thread.start()
+    
+    return {"status": "success", "message": f"Scholar sync initiated for {len(payload.kol_ids)} KOLs (pull_id: {payload.pull_id})."}
+
+
+@app.get("/api/sandbox/scholar_status")
+def get_scholar_status(pull_id: str):
+    """Returns per-KOL scholar sync status for the given pull_id."""
+    if not pg_engine:
+        raise HTTPException(status_code=500, detail="Database Engine Offline.")
+    
+    try:
+        with pg_engine.connect() as conn:
+            from sqlalchemy import text
+            # Ensure columns exist
+            try:
+                conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_status TEXT DEFAULT 'pending'"))
+                conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_id TEXT"))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+            
+            rows = conn.execute(text("""
+                SELECT s.id, s.first_name, s.last_name, s.institution, s.specialty,
+                       COALESCE(s.scholar_status, 'pending') AS scholar_status, 
+                       s.scholar_id,
+                       m.total_citations, m.h_index, m.i10_index, m.last_updated_date
+                FROM kols_staging s
+                LEFT JOIN kol_scholar_metrics m ON s.id::text = m.kol_id::text
+                WHERE :pull = ANY(string_to_array(s.pull_id, ','))
+                ORDER BY s.last_name, s.first_name
+            """), {"pull": pull_id}).fetchall()
+            
+            data = []
+            for r in rows:
+                data.append({
+                    "id": r.id,
+                    "name": f"{r.first_name} {r.last_name}",
+                    "institution": r.institution or "",
+                    "specialty": r.specialty or "",
+                    "scholar_status": r.scholar_status or "pending",
+                    "scholar_id": r.scholar_id or "",
+                    "total_citations": r.total_citations if r.total_citations else None,
+                    "h_index": r.h_index if r.h_index else None,
+                    "i10_index": r.i10_index if r.i10_index else None,
+                    "last_synced": str(r.last_updated_date) if r.last_updated_date else None
+                })
+            
+            return {"data": data, "total": len(data)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sandbox/scholar_review_queue")
+def get_scholar_review_queue(pull_id: str):
+    """Returns Tier 4 scholar review candidates for KOLs in this pull_id."""
+    if not pg_engine:
+        raise HTTPException(status_code=500, detail="Database Engine Offline.")
+    
+    try:
+        with pg_engine.connect() as conn:
+            from sqlalchemy import text
+            rows = conn.execute(text("""
+                SELECT srq.id, srq.kol_id, srq.kol_name, 
+                       srq.candidate_scholar_id, srq.candidate_name, 
+                       srq.candidate_affiliation, srq.candidate_interests,
+                       srq.disambiguation_tier_failed, srq.reviewed
+                FROM scholar_review_queue srq
+                JOIN kols_staging s ON srq.kol_id::text = s.id::text
+                WHERE srq.reviewed = false AND :pull = ANY(string_to_array(s.pull_id, ','))
+                ORDER BY srq.kol_name
+            """), {"pull": pull_id}).fetchall()
+            
+            data = []
+            for r in rows:
+                data.append({
+                    "queue_id": r.id,
+                    "kol_id": r.kol_id,
+                    "kol_name": r.kol_name,
+                    "candidate_scholar_id": r.candidate_scholar_id,
+                    "candidate_name": r.candidate_name or "",
+                    "candidate_affiliation": r.candidate_affiliation or "",
+                    "candidate_interests": r.candidate_interests or "",
+                    "tier_failed": r.disambiguation_tier_failed,
+                })
+            return {"data": data, "total": len(data)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ResolveScholarPayload(BaseModel):
+    queue_id: int
+    kol_id: str
+    candidate_scholar_id: str
+    decision: str  # "accept" or "reject"
+
+@app.post("/api/sandbox/resolve_scholar")
+def resolve_scholar(payload: ResolveScholarPayload):
+    """Human approves or rejects a Scholar candidate from the review queue."""
+    if not pg_engine:
+        raise HTTPException(status_code=500, detail="Database Engine Offline.")
+    if payload.decision not in ("accept", "reject"):
+        raise HTTPException(status_code=400, detail="Decision must be: accept or reject.")
+    
+    try:
+        with pg_engine.connect() as conn:
+            from sqlalchemy import text
+            
+            if payload.decision == "accept":
+                # Inline: fetch author data, extract metrics, upsert
+                script_dir = os.path.join(base_dir, "09_Scholar_Engine")
+                import sys
+                sys.path.insert(0, script_dir)
+                from sync_scholar_citations import fetch_scholar_author_data, extract_metrics, upsert_metrics
+                
+                author_data = fetch_scholar_author_data(payload.candidate_scholar_id)
+                metrics = extract_metrics(author_data)
+                upsert_metrics(conn, payload.kol_id, payload.candidate_scholar_id, metrics)
+                
+                conn.execute(text("UPDATE kols_staging SET scholar_status = 'scholar_verified', scholar_id = :sid WHERE id::text = :kid"),
+                             {"sid": payload.candidate_scholar_id, "kid": payload.kol_id})
+                msg = f"Scholar {payload.candidate_scholar_id} accepted for KOL {payload.kol_id}. Citations: {metrics['total_citations']}"
+            else:
+                conn.execute(text("UPDATE kols_staging SET scholar_status = 'scholar_failed' WHERE id::text = :kid"),
+                             {"kid": payload.kol_id})
+                msg = f"Scholar candidate rejected for KOL {payload.kol_id}."
+            
+            # Mark reviewed in queue
+            conn.execute(text("UPDATE scholar_review_queue SET reviewed = true WHERE id = :qid"), {"qid": payload.queue_id})
+            conn.commit()
+        
+        return {"status": "success", "message": msg}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Check if SERPAPI_KEY is set (used by Scholar sync routes)
+SERPAPI_KEY_PRESENT = bool(os.getenv("SERPAPI_KEY"))
+
 if __name__ == "__main__":
     import uvicorn
     # Execution: uvicorn api_server:app --reload --host 0.0.0.0 --port 8000
     uvicorn.run("api_server:app", host="0.0.0.0", port=8000, reload=True)
+
