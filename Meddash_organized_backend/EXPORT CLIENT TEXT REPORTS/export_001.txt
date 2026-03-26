@@ -1,0 +1,379 @@
+=== CAMPAIGN SANDBOX EXPORT: 001 ===
+
+Total Records: 75
+
+Name:   Changjiang Liu
+Inst:   Department of Thoracic Surgery, The Fourth Hospital of Hebei Medical University, Shijiazhuang, Hebei, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Tingting Liu
+Inst:   Jiangsu Key Laboratory of New Drug Research and Clinical Pharmacy, Xuzhou Medical University, 209 Tongshan Road, Xuzhou, 221004, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Yawei Wang
+Inst:   School of Medicine, University of Electronic Science and Technology of China, Chengdu, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Guohua Liu
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Xinyue Cheng
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Weili Kong
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Xingqi Zhou
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Xiaoqiang Wen
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Xiao Wang
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Yiyu Lin
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Linyu Pan
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Haiying Dong
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Hongxia Bi
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Lina He
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Hongyan Zheng
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China. 328077454@qq.com.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Giacomo Argento
+Inst:   Division of Thoracic Surgery, Sant'Andrea Hospital, La Sapienza University of Rome, Rome, Italy. Electronic address: giacomo.argento@uniroma1.it.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Erino Angelo Rendina
+Inst:   Division of Thoracic Surgery, Sant'Andrea Hospital, La Sapienza University of Rome, Rome, Italy.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Antonio D'Andrilli
+Inst:   Division of Thoracic Surgery, Sant'Andrea Hospital, La Sapienza University of Rome, Rome, Italy.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Anna Maria Ciccone
+Inst:   Division of Thoracic Surgery, Sant'Andrea Hospital, La Sapienza University of Rome, Rome, Italy.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Mohsen Ibrahim
+Inst:   Division of Thoracic Surgery, Sant'Andrea Hospital, La Sapienza University of Rome, Rome, Italy.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Beatrice Trabalza Marinucci
+Inst:   Division of Thoracic Surgery, Sant'Andrea Hospital, La Sapienza University of Rome, Rome, Italy.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Federico Venuta
+Inst:   Division of Thoracic Surgery, Policlinico Umberto I, La Sapienza University of Rome, Rome, Italy.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Giulio Maurizi
+Inst:   Division of Thoracic Surgery, Sant'Andrea Hospital, La Sapienza University of Rome, Rome, Italy.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Mohd Saeed
+Inst:   Department of Biology, College of Sciences, University of Hail, Hail, Saudi Arabia.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Samra Siddiqui
+Inst:   Department Health Services Management, College of Public Health and Health Informatics, University of Hail, Hail, Saudi Arabia.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Munazzah Tasleem
+Inst:   Department of Biochemistry, Jamia Hamdard, New Delhi, India.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Md Jahoor Alam
+Inst:   Department of Biology, College of Sciences, University of Hail, Hail, Saudi Arabia.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Saad Saeed Alqathani
+Inst:   Clinical Pharmacy Department, Jazan University, Jazan, Saudi Arabia.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Fevzi Bardakci
+Inst:   Department of Biology, College of Sciences, University of Hail, Hail, Saudi Arabia.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Nujud Almuzaini
+Inst:   Department of Biology, College of Sciences, University of Hail, Hail, Saudi Arabia.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Tarun Kumar Upadhyay
+Inst:   Department of Biotechnology, Parul Institute of Applied Sciences and Research and Development Cell, Parul University, Vadodara, India.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Rania Abdeen Hussain Abdalla
+Inst:   Department of Obstetrics and Gynecology, College of Medicine, University of Hail, Hail, Saudi Arabia.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Yingchun Zuo
+Inst:   Jiangsu Key Laboratory of New Drug Research and Clinical Pharmacy, Xuzhou Medical University, 209 Tongshan Road, Xuzhou, 221004, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Shuai Gao
+Inst:   Jiangsu Key Laboratory of New Drug Research and Clinical Pharmacy, Xuzhou Medical University, 209 Tongshan Road, Xuzhou, 221004, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Shiyu He
+Inst:   Jiangsu Key Laboratory of New Drug Research and Clinical Pharmacy, Xuzhou Medical University, 209 Tongshan Road, Xuzhou, 221004, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Mengjiao Wang
+Inst:   Department of Pharmacy, Affiliated Hospital of Xuzhou Medical University, Xuzhou, 221004, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Lili Hu
+Inst:   Department of Pharmacy, Affiliated Hospital of Xuzhou Medical University, Xuzhou, 221004, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Chenglin Li
+Inst:   Jiangsu Key Laboratory of New Drug Research and Clinical Pharmacy, Xuzhou Medical University, 209 Tongshan Road, Xuzhou, 221004, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Yanyan Yu
+Inst:   Jiangsu Key Laboratory of New Drug Research and Clinical Pharmacy, Xuzhou Medical University, 209 Tongshan Road, Xuzhou, 221004, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Weifeng Tang
+Inst:   Departments of Esophageal Surgery and Thoracic Surgery, Nanjing Drum Tower Hospital, The Affiliated Hospital of Nanjing University Medical School, Nanjing, 210008, Jiangsu Province, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Jian Wang
+Inst:   Department of Cardiothoracic Surgery, Affiliated Yixing People's Hospital of Jiangsu University, Yixing, Jiangsu Province, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Ting Dai
+Inst:   Department of Pharmacy, Affiliated Yixing People's Hospital of Jiangsu University, Yixing, Jiangsu Province, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Hao Qiu
+Inst:   Department of Laboratory Medicine, School of Medicine, Jiangsu University, Zhenjiang, Jiangsu Province, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Chao Liu
+Inst:   Department of Cardiothoracic Surgery, Affiliated People's Hospital of Jiangsu University, Zhenjiang, Jiangsu Province, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Shuchen Chen
+Inst:   Department of Thoracic Surgery, Fujian Medical University Union Hospital, Fuzhou, Fujian Province, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Zhendong Hu
+Inst:   Departments of Esophageal Surgery and Thoracic Surgery, Nanjing Drum Tower Hospital, The Affiliated Hospital of Nanjing University Medical School, Nanjing, 210008, Jiangsu Province, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Wei Lv
+Inst:   College of Pharmacy, Henan University of Chinese Medicine, Zhengzhou, 450046, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Wenmin Shi
+Inst:   College of Pharmacy, Henan University of Chinese Medicine, Zhengzhou, 450046, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Zhijuan Zhang
+Inst:   College of Pharmacy, Henan University of Chinese Medicine, Zhengzhou, 450046, China; Institute of Mass Spectrometer and Atmospheric Environment, Jinan University, Guangzhou, 510632, China. Electronic address: zhangyan0204@126.com.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Lihua Ru
+Inst:   College of Pharmacy, Henan University of Chinese Medicine, Zhengzhou, 450046, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Weisheng Feng
+Inst:   College of Pharmacy, Henan University of Chinese Medicine, Zhengzhou, 450046, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Hanxiao Tang
+Inst:   College of Chinese Medical Sciences, Henan University of Chinese Medicine, Zhengzhou, 450046, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Xiangqi Wang
+Inst:   The Third Affiliated Hospital of Henan University of Chinese Medicine, Zhengzhou, 450046, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Yanguo Shang
+Inst:   College of Biotechnology and Pharmaceutical Engineering, Nanjing Tech University, Nanjing, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Shengnan Fu
+Inst:   Jiangsu Key Laboratory of Drug Design and Optimization, Department of Medicinal Chemistry, School of Pharmacy, China Pharmaceutical University, Nanjing, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Qingjing Hao
+Inst:   Jiangsu Key Laboratory of Drug Design and Optimization, Department of Medicinal Chemistry, School of Pharmacy, China Pharmaceutical University, Nanjing, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Hanjie Ying
+Inst:   College of Biotechnology and Pharmaceutical Engineering, Nanjing Tech University, Nanjing, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Jinxin Wang
+Inst:   Jiangsu Key Laboratory of Drug Design and Optimization, Department of Medicinal Chemistry, School of Pharmacy, China Pharmaceutical University, Nanjing, China. Electronic address: jinxinwang@163.com.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Tao Shen
+Inst:   College of Biotechnology and Pharmaceutical Engineering, Nanjing Tech University, Nanjing, China. Electronic address: shentao@njtech.edu.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Kegang Jia
+Inst:   Department of Thoracic Surgery, Sichuan Provincial People's Hospital, University of Electronic Science and Technology of China, Chengdu, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Hanbing Shi
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China. shi-hanbing@163.com.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Yunfei Jiang
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Haijun Mu
+Inst:   Department of Pulmonary and Critical Care Medicine, The Third Affiliated Hospital of Qiqihar Medical University, 3 Taishun Street, Tiefeng District, Qiqihar, 161000, Heilongjiang, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Farrukh Aqil
+Inst:   Department of Medicine, Brown Cancer Center, University of Louisville, Louisville, KY, USA.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Feng Gao
+Inst:   Department of Thoracic Surgery, The Fourth Hospital of Hebei Medical University, Shijiazhuang, Hebei, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Jie Yang
+Inst:   Department of Radiotherapy, The Fourth Hospital of Hebei Medical University, Shijiazhuang, Hebei, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Ziqiang Tian
+Inst:   Department of Thoracic Surgery, The Fourth Hospital of Hebei Medical University, Shijiazhuang, Hebei, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Hao Xu
+Inst:   Jiangsu Key Laboratory of New Drug Research and Clinical Pharmacy, Xuzhou Medical University, 209 Tongshan Road, Xuzhou, 221004, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Q I Cao
+Inst:   Department of Assisted Reproductive Medicine, Sichuan Provincial Academy of Medical Sciences & Sichuan Provincial People's Hospital, Chengdu, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Dan Li
+Inst:   Department of Respiratory and Critical Care Medicine, The First Affiliated Hospital of Xi'an Jiaotong University, Xi'an, Shaanxi, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Yanwei Shen
+Inst:   Department of Surgical Oncology, Shaanxi Provincial People's Hospital, Xi'an, Shaanxi, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Hui Ren
+Inst:   Department of Respiratory and Critical Care Medicine, The First Affiliated Hospital of Xi'an Jiaotong University, Xi'an, Shaanxi, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Li Wang
+Inst:   Department of Respiratory and Critical Care Medicine, The First Affiliated Hospital of Xi'an Jiaotong University, Xi'an, Shaanxi, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Jin Yang
+Inst:   Department of Medical Oncology, The First Affiliated Hospital of Xi'an Jiaotong University, Xi'an, Shaanxi, China.
+Spec:   nan
+Status: verified
+----------------------------------------
+Name:   Yuan Wang
+Inst:   Department of Medical Imaging, The First Affiliated Hospital of Xi'an Jiaotong University, Xi'an, Shaanxi, China. wangyuan8003@126.com.
+Spec:   nan
+Status: verified
+----------------------------------------

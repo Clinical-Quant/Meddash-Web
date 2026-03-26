@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+venv/
+env/
+
+# Databases
+*.db
+*.db-wal
+*.db-shm
+
+# Caches and Raw
+02_CT_Data_Engine/ct_raw_json/
+03_BioCrawler_GTM/biocrawler_db/
+05_Product_TA_Landscape/ta_landscape_cache/
+temp_*.json
+
+# Logs
+*.log
+07_DevOps_Observability/logs/
+
+# IDE
+.vscode/
+.idea/

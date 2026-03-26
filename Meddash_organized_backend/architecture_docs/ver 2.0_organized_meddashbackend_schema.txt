@@ -1,0 +1,107 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+ subgraph KOL_Agent["01_KOL_Data_Engine"]
+        Cron1[["nightly_scheduler.py<br>(Daily Cron: 2:00 AM)"]]
+        P1["run_pipeline.py"]
+        P2["extract_publications.py"]
+        P3["db_ingestion.py"]
+        P4["kol_disambiguator.py"]
+        P5["kol_weight.py<br>APW = log(1+sum SJR)"]
+        HumanLLM[["review_disambiguations.py"]]
+        P6["load_sjr.py"]
+  end
+ subgraph CT_Agent["02_CT_Data_Engine"]
+        CT1["ct_crawler.py"]
+        CT2["ct_ingestion.py"]
+        CT3["ct_mesh_mapper.py"]
+        CT4["ct_kol_bridge.py"]
+        CT5["ct_results_parser.py"]
+        CT6["ct_pub_bridge.py"]
+        CT7["ct_eligibility_parser.py"]
+  end
+ subgraph BioCrawler_GTM["03_BioCrawler_GTM"]
+        Cron2[["run_biocrawler.bat<br>(Daily Cron: 5:00 PM)"]]
+        B1["biocrawler.py"]
+        Bridge["bridge_engine.py<br>(The Synapse Layer)"]
+        Cron3[["run_pull_from_sheets_daily.bat<br>(4:00 PM)"]]
+        CRM1["push_to_sheets.py"]
+        CRM2["pull_from_sheets.py"]
+        GSheet[("Meddash CRM V1.0<br>(Google Sheets)")]
+  end
+ subgraph Product1["04_Product_KOL_Briefs"]
+        Brief["generate_kol_brief.py"]
+        Export["export_kols.py"]
+  end
+ subgraph Product2["05_Product_TA_Landscape"]
+        TA1["fetch_ta_landscape_data.py"]
+        TA2["generate_ta_landscape_stepwise.py"]
+        TA_Cache[("ta_landscape_cache/")]
+  end
+ subgraph DevOps["07_DevOps_Observability"]
+        Dev1["telegram_notifier.py"]
+        Dev2["backup_antigravity.ps1"]
+        Dev3["patch_paths.py"]
+        LogsFolder[("logs/")]
+        Filepaths["meddash_filepaths.md"]
+  end
+ subgraph Datastores["06_Shared_Datastores"]
+        DB1[("meddash_kols.db<br>(Contains journal_metrics)")]
+        DB2[("ct_trials.db")]
+        DB3[("biocrawler_leads.db")]
+        DB4[("kol_merge_candidates")]
+        CSVFolder[("csv_exports/")]
+  end
+
+    %% Wiring Core Pipeline
+    Cron1 --> P1
+    P1 --> P2 & P3 & P4 & P5
+    P4 --> HumanLLM
+    P6 -. "Loads SJR to" .-> DB1
+    
+    %% DB Interactions (Central Hub)
+    P3 --> DB1
+    P4 --> DB4
+    HumanLLM --> DB4 & DB1
+    P5 --> DB1
+
+    %% Wiring CT Engine
+    CT1 --> CT2
+    CT2 --> CT3 & CT5 & CT7 & DB2
+    CT3 --> CT4
+    CT4 --> CT6
+    
+    CT4 -. "Maps to SQL" .-> DB1
+    CT6 -. "Reads publications" .-> DB1
+    CT8["ct_bridge_review.tsv"] -. "Outputs to Review" .-> DB2
+
+    %% Wiring GTM/BioCrawler
+    Cron2 --> B1
+    B1 --> DB3
+    DB1 -. "Provides SVS metric" .-> Bridge
+    DB3 -. "Provides Startups" .-> Bridge
+    
+    DB3 L_DB3_CRM1_0@-- "Extract 20 Leads" --> CRM1
+    CRM1 --> GSheet
+    Cron3 --> CRM2
+    GSheet --> CRM2
+    CRM2 L_CRM2_DB3_0@-- "Upserts URLs" --> DB3
+
+    %% Output Agents
+    CT5 --> Brief
+    CT6 --> Brief
+    CT7 --> Brief
+    Brief -. "Reads" .-> DB2
+    Brief -. "Reads" .-> DB1
+
+    DB1 --> TA1
+    DB2 --> TA1
+    DB3 --> TA1
+    TA1 --> TA_Cache
+    TA_Cache --> TA2
+
+    linkStyle 36 stroke:#2962FF,fill:none
+    L_DB3_CRM1_0@{ animation: slow } 
+    L_CRM2_DB3_0@{ animation: slow } 

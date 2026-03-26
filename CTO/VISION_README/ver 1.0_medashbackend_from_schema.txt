@@ -1,0 +1,120 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+ subgraph backend["Meddash Backend Run Node KOL ENGINE (Victus 16)"]
+        Cron1[["nightly_scheduler.py<br>(Daily Cron: 2:00 AM)"]]
+        P1["run_pipeline.py"]
+        P2["extract_publications.py<br>+ ORCID extraction"]
+        P3["db_ingestion.py<br>ORCID-first KOL lookup"]
+        P4["kol_disambiguator.py<br>4-signal scoring engine"]
+        P5["kol_weight.py<br>APW = log(1+sum SJR)"]
+        HumanLLM[["review_disambiguations.py<br>Human + Gemini Flash Review"]]
+  end
+ subgraph ct_engine["CT Engine (ct_crawler → generate_kol_brief)"]
+        CT1["ct_crawler.py<br>Step 2: API v2 crawl"]
+        CT2["ct_ingestion.py<br>Step 3: JSON → 11 tables"]
+        CT3["ct_mesh_mapper.py<br>Step 4: condition → MeSH"]
+        CT4["ct_kol_bridge.py<br>Step 5: investigator ↔ KOL"]
+        CT5["ct_results_parser.py<br>Step 6: outcomes + AEs"]
+        CT6["ct_pub_bridge.py<br>Step 7: PMID × KOL pubs"]
+        CT7["ct_eligibility_parser.py<br>Step 8: biomarkers + stage"]
+        CT8["generate_kol_brief.py<br>Step 9: KOL Brief output"]
+        Qwen{{"Qwen 2.5 7B / Ollama<br>(Local LLM — optional)"}}
+  end
+ subgraph ta_landscape["Product 2: TA Landscape Pipeline (Semi-HIL Brief)<br>Created: 2026-03-12"]
+        TA1["fetch_ta_landscape_data.py<br>Batch API Fetcher"]
+        TA2["generate_ta_landscape_stepwise.py<br>Stepwise Generation Engine"]
+        TA_Cache[("ta_landscape_cache/<br>(JSON/SQLite Cache)")]
+        HIL_Prompt{{"Human-in-the-loop<br>(Stepwise Review)"}}
+        GeminiPro{{"Gemini 2.5 Pro API<br>(Consulting Voice)"}}
+  end
+ subgraph lenovo["CMO Run Node (Victus 16)"]
+        Cron2[["run_biocrawler.bat<br>(Daily Cron: 5:00 PM)"]]
+        B1["biocrawler.py (Mode: API)"]
+        B2["biocrawler.py (Mode: Deep)"]
+  end
+ subgraph crm["CRM Integration (marketing_agent)"]
+        Cron3[["run_pull_from_sheets_daily.bat<br>(Daily Cron: 4:00 PM)"]]
+        CRM1["push_to_sheets.py<br>Extract 20 Leads"]
+        CRM2["pull_from_sheets.py<br>Reverse Sync URLs"]
+        GSheet[("Meddash CRM V1.0<br>(Google Sheets)")]
+  end
+ subgraph SaaS["Modular SaaS Platform (Phase 2)"]
+        M1["Module 1: KOL Intelligence<br>(SVS Rankings &amp; Geolocation)"]
+        M2["Module 2: Biotech Signals<br>(Funding &amp; Trial Momentum)"]
+        M3["Module 3: SDR Automation<br>(Outreach Teaser Generation)"]
+  end
+    Cron1 -- Triggers --> P1
+    P1 -- "1. Calls" --> P2
+    P1 -- "2. SQL Upsert" --> P3
+    P1 -- "3. Scores pairs" --> P4
+    P1 -- "4. Recomputes weights" --> P5
+    P4 -- Writes candidates --> HumanLLM
+    CT1 --> CT2
+    CT2 --> CT3 & CT5 & CT7 & DB5[("ct_trials.db<br>(CT Engine DB — 11 tables)")]
+    CT3 --> CT4
+    CT4 --> CT6
+    CT5 --> CT8
+    CT6 --> CT8
+    CT7 --> CT8
+    Qwen -. "--qwen flag" .-> CT3 & CT7
+    Cron2 -- Triggers --> B1 & B2
+    Internet1(("PubMed / NCBI<br>Global Literature")) -- XML/JSON + ORCID --> P2
+    P3 -- SQL Upsert: publications, kols, authorships, orcid --> DB1[("meddash_kols.db<br>(Core Intelligence DB)")]
+    P4 -- "Bulk pre-load sets" --> DB1
+    P4 -- Write scored pairs --> DB4[("kol_merge_candidates<br>(Human Review Queue)")]
+    P5 -- JOIN via ISSN --> DB3[("journal_metrics<br>(SCImago SJR Reference)")]
+    P5 -- UPDATE author_publication_weight --> DB1
+    HumanLLM -- Reads candidates --> DB4
+    HumanLLM -- "Per-candidate analysis" --> LLM{{"Gemini Flash API<br>(Bibliographic Advisor)"}}
+    HumanLLM -- APPROVE / REJECT / SKIP --> DB4
+    Internet2(("ClinicalTrials.gov<br>480k+ Trials")) -- API v2 REST --> CT1
+    CT3 L_CT3_DB5_0@-- condition_mesh_map cache --> DB5
+    CT4 L_CT4_DB1_0@-- Reads KOLs + MeSH --> DB1
+    CT4 L_CT4_DB5_0@-- Writes kol_id FKs --> DB5
+    CT6 L_CT6_DB1_0@-- Reads publications --> DB1
+    CT6 L_CT6_DB5_0@-- Writes kol_pub_id --> DB5
+    CT8 L_CT8_DB5_0@-- Reads CT + KOL data --> DB5
+    CT8 L_CT8_DB1_0@-- Reads pub signal --> DB1
+    CT8 --> KOLBrief["/s26/"]
+    Internet1 -- xml_abstracts --> TA1
+    Internet2 -- api_v2 --> TA1
+    DB1 -- KOL Rankings --> TA1
+    DB5 -- Trial Aggregates --> TA1
+    DB2[("biocrawler_leads.db<br>(Relationship Graph DB)")] -- Catalyst Signals --> TA1
+    TA1 -- Cache JSON --> TA_Cache
+    TA_Cache -- Load Context --> TA2
+    TA2 <--> HIL_Prompt
+    TA2 -- Prompt Instructions --> GeminiPro
+    GeminiPro -- Generated Narrative --> TA2
+    TA2 --> Report["TA_Landscape_Report.md"] & Audit["References_Audit.md"]
+    Internet2 -- API Search --> B1
+    Internet3(("Clearbit / SEC EDGAR / ATS<br>Deep Crawl Sources")) -- HTML/JSON Scrape --> B2
+    B1 -- SQL Upsert --> DB2
+    B2 -- Deep Enrichment --> DB2
+    DB1 -- "Calculates Real-time SVS" --> Bridge{"bridge_engine.py<br>(The Synapse Layer)"}
+    DB2 -- Maps Advisory Board Networks --> Bridge
+    Bridge -. Feeds SVS Metrics .-> M1
+    DB2 -. Feeds Startup Momentum .-> M2
+    Bridge -. "Outputs 'SDR_template.txt'" .-> M3
+    KOLBrief -. Phase 1 Product .-> M1
+    Report -. Product 2 .-> M1
+    DB2 L_DB2_CRM1_0@-- Daily Extract --> CRM1
+    CRM1 -- Append 20 Leads --> GSheet
+    Cron3 -- Triggers --> CRM2
+    GSheet -- Read Manual URLs --> CRM2
+    CRM2 L_CRM2_DB2_0@-- Update DB with URLs --> DB2
+    DB3 --> DB1
+    DB4 --> LLM
+    LLM --> DB1
+
+    style HIL_Prompt fill:#757575
+    linkStyle 31 stroke:#2962FF,fill:none
+    linkStyle 33 stroke:#2962FF,fill:none
+    linkStyle 36 stroke:#2962FF,fill:none
+    linkStyle 48 stroke:#AA00FF,fill:none
+    linkStyle 52 stroke:#AA00FF,fill:none
+    linkStyle 54 stroke:#AA00FF,fill:none
+    linkStyle 55 stroke:#AA00FF,fill:none
