@@ -1,19 +1,30 @@
-Last Updated: 2026-03-22 15:58 EST
+Last Updated: 2026-03-26 12:00 EST
 
 ---
 config:
   layout: elk
 ---
 flowchart TB
+ subgraph frontend[Meddash Local SaaS UI Next.js 15]
+        ui_dashboard[Dashboard UI Page]
+        ui_pipeline[Crawler Control & Execution UI]
+        ui_sandbox[Campaign Sandbox Validation UI]
+        ui_health[System Health & Log Streaming UI]
+  end
+
+ subgraph api[FastAPI Middleware & Subprocess Manager]
+        api_server[api_server.py REST Bridge]
+  end
+
  subgraph backend[01_KOL_Data_Engine]
         nightly_scheduler_py[nightly_scheduler.py Daily Cron 2:00 AM]
-        run_pipeline_py[run_pipeline.py]
-        extract_publications_py[extract_publications.py ORCID extraction]
-        db_ingestion_py[db_ingestion.py ORCID-first KOL lookup]
-        kol_disambiguator_py[kol_disambiguator.py 4-signal scoring engine]
+        run_pipeline_py[run_pipeline.py Command Controller]
+        extract_publications_py[extract_publications.py ORCID XML Extractor]
+        db_ingestion_py[db_ingestion.py Pull ID Staging Injection]
+        kol_disambig_tier1[kol_disambiguator.py Tier 1 Auto-Engine]
         kol_weight_py[kol_weight.py APW log 1 sum SJR]
-        review_disambiguations_py[review_disambiguations.py Human Gemini Flash Review]
   end
+
  subgraph ct_engine[02_CT_Data_Engine]
         ct_crawler_py[ct_crawler.py Step 2 API v2 crawl]
         ct_ingestion_py[ct_ingestion.py Step 3 JSON 11 tables]
@@ -25,13 +36,7 @@ flowchart TB
         generate_kol_brief_py[generate_kol_brief.py Step 9 KOL Brief output]
         GeminiFlash{{Gemini Flash API Cloud LLM Fallback}}
   end
- subgraph ta_landscape[05_Product_TA_Landscape]
-        fetch_ta_landscape_data_py[fetch_ta_landscape_data.py Batch API Fetcher]
-        generate_ta_landscape_stepwise_py[generate_ta_landscape_stepwise.py Stepwise Generation Engine]
-        ta_landscape_cache[(ta_landscape_cache JSON PostgreSQL Cache)]
-        HIL_Prompt{{Human-in-the-loop Stepwise Review}}
-        GeminiPro{{Gemini 2.5 Pro API Consulting Voice}}
-  end
+
  subgraph biocrawler[03_BioCrawler_GTM]
         run_biocrawler_bat[run_biocrawler.bat Daily Cron 5:00 PM]
         biocrawler_py_api[biocrawler.py Mode API]
@@ -42,78 +47,98 @@ flowchart TB
         pull_from_sheets_py[pull_from_sheets.py Reverse Sync URLs]
         Meddash_CRM_V1[(Meddash CRM V1.0 Google Sheets)]
   end
+
+ subgraph ta_landscape[05_Product_TA_Landscape]
+        fetch_ta_landscape_data_py[fetch_ta_landscape_data.py Batch Fetcher]
+        generate_ta_landscape_stepwise_py[generate_ta_landscape_stepwise.py Engine]
+        ta_landscape_cache[(ta_landscape_cache JSON)]
+        HIL_Prompt{{Human-in-the-loop Review}}
+        GeminiPro{{Gemini 2.5 Pro API Consulting}}
+  end
+
  subgraph mdm_ontology[08_MDM_Ontology_Engine]
-        build_disease_ontology_py[build_disease_ontology.py Pulls NIH UMLS APIs]
-        weekly_ontology_sync_bat[weekly_ontology_sync.bat Weekly Cron Sunday]
-        disease_criteria_db[(PostgreSQL disease_criteria MDM Ontology Layer)]
-  end
- subgraph datastores[06_Shared_Datastores]
-        meddash_kols_db[(PostgreSQL meddash_kols Core Intelligence DB)]
-        ct_trials_db[(PostgreSQL ct_trials.db CT Engine DB 11 tables)]
-        biocrawler_leads_db[(PostgreSQL biocrawler_leads Relationship Graph DB)]
-        kol_merge_candidates_db[(PostgreSQL kol_merge_candidates Human Review Queue)]
-        journal_metrics_db[(PostgreSQL journal_metrics SCImago SJR Reference)]
+        build_disease_ontology_py[build_disease_ontology.py Pulls UMLS APIs]
+        weekly_ontology_sync_bat[weekly_ontology_sync.bat Weekly Cron]
+        disease_criteria_db[(PostgreSQL disease_criteria MDM Layer)]
   end
 
+ subgraph datastores[06_Shared_Datastores PostgreSQL Cluster]
+        kols_staging_db[(kols_staging Pull ID Sandbox)]
+        kol_merge_candidates_db[(kol_merge_candidates Tier 2 Queue)]
+        deep_disambiguation_db[(deep_disambiguation_needed Tier 3 Escalation)]
+        meddash_kols_db[(meddash_kols Global Intelligence Target)]
+        ct_trials_db[(ct_trials CT Engine DB)]
+        biocrawler_leads_db[(biocrawler_leads Relationship DB)]
+        journal_metrics_db[(journal_metrics SCImago SJR)]
+  end
+
+    %% UI to API Flows
+    ui_pipeline -- POST Configuration --> api_server
+    ui_health -- GET /api/system/logs --> api_server
+    ui_sandbox -- GET staged kols / Resolve pairs --> api_server
+
+    %% API to Backend Flows
+    api_server -- Subprocess threads --> run_pipeline_py & ct_crawler_py & biocrawler_py_api
+    api_server -- Read/Write --> kols_staging_db & kol_merge_candidates_db & deep_disambiguation_db
+
+    %% KOL Pipeline Core Process
     nightly_scheduler_py -- Triggers --> run_pipeline_py
-    run_pipeline_py -- 1. Calls --> extract_publications_py
-    run_pipeline_py -- 2. SQL Upsert --> db_ingestion_py
-    run_pipeline_py -- 3. Scores pairs --> kol_disambiguator_py
-    run_pipeline_py -- 4. Recomputes weights --> kol_weight_py
-    kol_disambiguator_py -- Writes candidates --> review_disambiguations_py
-    ct_crawler_py --> ct_ingestion_py
-    ct_ingestion_py --> ct_mesh_mapper_py & ct_results_parser_py & ct_eligibility_parser_py & ct_trials_db
-    ct_mesh_mapper_py --> ct_kol_bridge_py
-    ct_kol_bridge_py --> ct_pub_bridge_py
-    ct_results_parser_py --> generate_kol_brief_py
-    ct_pub_bridge_py --> generate_kol_brief_py
-    ct_eligibility_parser_py --> generate_kol_brief_py
-    GeminiFlash -. gemini flag .-> ct_mesh_mapper_py & ct_eligibility_parser_py
-    run_biocrawler_bat -- Triggers --> biocrawler_py_api & biocrawler_py_deep
-    Internet1((PubMed NCBI Global Literature)) -- XML JSON ORCID --> extract_publications_py
-    db_ingestion_py -- SQL Upsert publications kols authorships orcid --> meddash_kols_db
-    kol_disambiguator_py -- Bulk pre-load sets --> meddash_kols_db
-    kol_disambiguator_py -- Write scored pairs --> kol_merge_candidates_db
-    kol_weight_py -- JOIN via ISSN --> journal_metrics_db
-    kol_weight_py -- UPDATE author_publication_weight --> meddash_kols_db
-    review_disambiguations_py -- Reads candidates --> kol_merge_candidates_db
-    review_disambiguations_py -- Per-candidate analysis --> LLM{{Gemini Flash API Bibliographic Advisor}}
-    review_disambiguations_py -- APPROVE REJECT SKIP --> kol_merge_candidates_db
-    Internet2((ClinicalTrials.gov 480k Trials)) -- API v2 REST --> ct_crawler_py
-    ct_mesh_mapper_py -- condition_mesh_map cache --> ct_trials_db
-    ct_kol_bridge_py -- Reads KOLs MeSH --> meddash_kols_db
-    ct_kol_bridge_py -- Writes kol_id FKs --> ct_trials_db
-    ct_pub_bridge_py -- Reads publications --> meddash_kols_db
-    ct_pub_bridge_py -- Writes kol_pub_id --> ct_trials_db
-    generate_kol_brief_py -- Reads CT KOL data --> ct_trials_db
-    generate_kol_brief_py -- Reads pub signal --> meddash_kols_db
-    generate_kol_brief_py --> KOLBrief[s26 Output Product]
-    Internet1 -- xml_abstracts --> fetch_ta_landscape_data_py
-    Internet2 -- api_v2 --> fetch_ta_landscape_data_py
-    meddash_kols_db -- KOL Rankings --> fetch_ta_landscape_data_py
-    ct_trials_db -- Trial Aggregates --> fetch_ta_landscape_data_py
-    biocrawler_leads_db -- Catalyst Signals --> fetch_ta_landscape_data_py
-    fetch_ta_landscape_data_py -- Cache JSON --> ta_landscape_cache
-    ta_landscape_cache -- Load Context --> generate_ta_landscape_stepwise_py
-    generate_ta_landscape_stepwise_py <--> HIL_Prompt
-    generate_ta_landscape_stepwise_py -- Prompt Instructions --> GeminiPro
-    GeminiPro -- Generated Narrative --> generate_ta_landscape_stepwise_py
-    generate_ta_landscape_stepwise_py --> Report[TA_Landscape_Report.md] & Audit[References_Audit.md]
-    Internet2 -- API Search --> biocrawler_py_api
-    Internet3((Clearbit SEC EDGAR ATS Deep Crawl Sources)) -- HTML JSON Scrape --> biocrawler_py_deep
-    biocrawler_py_api -- SQL Upsert --> biocrawler_leads_db
-    biocrawler_py_deep -- Deep Enrichment --> biocrawler_leads_db
-    meddash_kols_db -- Calculates Real-time SVS --> bridge_engine_py
-    biocrawler_leads_db -- Maps Advisory Board Networks --> bridge_engine_py
-    biocrawler_leads_db -- Daily Extract --> push_to_sheets_py
-    push_to_sheets_py -- Append 20 Leads --> Meddash_CRM_V1
-    run_pull_from_sheets_daily_bat -- Triggers --> pull_from_sheets_py
-    Meddash_CRM_V1 -- Read Manual URLs --> pull_from_sheets_py
-    pull_from_sheets_py -- Update DB with URLs --> biocrawler_leads_db
-    journal_metrics_db --> meddash_kols_db
-    kol_merge_candidates_db -- Deduplication --> LLM
-    LLM --> meddash_kols_db
+    run_pipeline_py -- 1. Target Query --> extract_publications_py
+    run_pipeline_py -- 2. SQL JSON Dump --> db_ingestion_py
+    run_pipeline_py -- 3. Runs Disambiguator --> kol_disambig_tier1
+    run_pipeline_py -- 4. Calc SVS Weights --> kol_weight_py
 
+    Internet1((PubMed NCBI API)) -- XML JSON --> extract_publications_py
+    db_ingestion_py -- CSV Pull ID Arrays --> kols_staging_db
+    
+    %% Multi-Tier Disambiguation Flow
+    kols_staging_db -- Raw Pairs --> kol_disambig_tier1
+    kol_disambig_tier1 -- Tier 1: ORCID/Score >=0.70 --> kols_staging_db
+    kol_disambig_tier1 -- Tier 1: Uncertain Pairs <0.70 --> kol_merge_candidates_db
+    kol_merge_candidates_db -- Pending Pairs --> ui_sandbox
+    ui_sandbox <--> GeminiFlash25{{Gemini Flash 2.5 HITL Context Review}}
+    ui_sandbox -- Tier 2: Same/Distinct Resolution --> kols_staging_db
+    ui_sandbox -- Tier 2: Escalate --> deep_disambiguation_db
+    ui_sandbox -- Sandbox Approved Commit --> meddash_kols_db
+
+    kol_weight_py -- UPDATE APW --> meddash_kols_db
+    journal_metrics_db -- JOIN via ISSN --> kol_weight_py
+
+    %% Clinical Trials Engine
+    Internet2((ClinicalTrials.gov v2 APIs)) --> ct_crawler_py
+    ct_crawler_py --> ct_ingestion_py
+    ct_ingestion_py --> ct_trials_db
+    ct_trials_db --> ct_mesh_mapper_py & ct_results_parser_py & ct_eligibility_parser_py
+    ct_mesh_mapper_py --> ct_kol_bridge_py
+    ct_kol_bridge_py -- Reads KOLs --> meddash_kols_db
+    ct_kol_bridge_py --> ct_pub_bridge_py
+    ct_pub_bridge_py -- Reads Pubs --> meddash_kols_db
+    ct_results_parser_py --> generate_kol_brief_py
+    generate_kol_brief_py --> KOLBrief[Output Product]
+    GeminiFlash -. Parsing Fallback .-> ct_mesh_mapper_py & ct_eligibility_parser_py
+
+    %% BioCrawler GTM
+    run_biocrawler_bat --> biocrawler_py_api & biocrawler_py_deep
+    Internet2 --> biocrawler_py_api
+    Internet3((Clearbit SEC EDGAR Deep Scan)) --> biocrawler_py_deep
+    biocrawler_py_api & biocrawler_py_deep -- Upserts --> biocrawler_leads_db
+    biocrawler_leads_db <--> bridge_engine_py
+    meddash_kols_db --> bridge_engine_py
+    push_to_sheets_py <-- Daily Extract --> biocrawler_leads_db
+    pull_from_sheets_py <-- Weekly Update --> biocrawler_leads_db
+    push_to_sheets_py --> Meddash_CRM_V1
+    Meddash_CRM_V1 --> pull_from_sheets_py
+
+    %% TA Landscape
+    fetch_ta_landscape_data_py -- Cached Extracts --> ta_landscape_cache
+    meddash_kols_db & ct_trials_db & biocrawler_leads_db --> fetch_ta_landscape_data_py
+    ta_landscape_cache --> generate_ta_landscape_stepwise_py
+    generate_ta_landscape_stepwise_py <--> HIL_Prompt
+    generate_ta_landscape_stepwise_py <--> GeminiPro
+    generate_ta_landscape_stepwise_py --> TA_Landscape_Report[Markdown Product]
+
+    %% Ontology Engine
     weekly_ontology_sync_bat --> build_disease_ontology_py
     build_disease_ontology_py -. Upserts Medical Concepts .-> disease_criteria_db
-    disease_criteria_db -. Crosswalk Autocomplete .-> UI[Next.js Global UI]
+    disease_criteria_db -. Autocomplete & Standardization .-> frontend
+
