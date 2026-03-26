@@ -1,6 +1,6 @@
 # Meddash GitHub Monorepo Layout
 
-> **Repository**: `Clinical-Quant/meddash` (or your chosen org/name)  
+> **Repository**: [`Clinical-Quant/Meddash.ai`](https://github.com/Clinical-Quant/Meddash.ai) (Private)  
 > **Branch strategy**: `main` (stable) · `dev` (active work)  
 > **Last updated**: 2026-03-26
 
@@ -76,7 +76,7 @@ git push origin main
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/Clinical-Quant/meddash.git
+git clone https://github.com/Clinical-Quant/Meddash.ai.git
 cd meddash
 
 # 2. Restore backend
