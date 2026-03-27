@@ -156,5 +156,102 @@ When the user clicked "Run Disambiguation Engine" on the UI, the engine script c
 ### Resolution
 1. **Schema Hotfix**: Added `ALTER TABLE kol_merge_candidates ADD COLUMN IF NOT EXISTS pull_id TEXT;` right after the table definition in `kol_disambiguator.py` to seamlessly hot-patch existing databases without a hard wipe.
 2. **Regex Filter**: Updated the temporal query to `WHERE p.published_date IS NOT NULL AND p.published_date ~ '^[0-9]{4}'` utilizing PostgreSQL regex to isolate only clean, numeric ISO format years.
+---
 
+## [2026-03-26] - API Server: 501 Unsupported Method / Failed to Fetch (Port 8000 Conflict)
 
+### Incident Description
+When attempting to launch crawler pipelines or fetch staged records from the frontend, the UI would report "Failed to fetch" and the backend would appear non-responsive or return "501 Unsupported Method" errors.
+
+### Root Cause Analysis (RCA)
+A standard Python static file server (`python -m http.server 8000`) was accidentally running in the background on port `8000`, which is the same port used by the Meddash FastAPI sidecar (`api_server.py`). The basic HTTP server intercepted incoming REST `POST` and `GET` requests; while it served some GET requests as file listings, it explicitly rejected `POST` requests with a `501 Unsupported Method` error, preventing the crawler engines from being triggered.
+
+### Resolution
+1. **Diagnostics**: Used `Get-NetTCPConnection -LocalPort 8000` to identify the owning process ID (`33484`).
+2. **Process Analysis**: Confirmed via WMI that the process was indeed `python.exe -m http.server 8000`.
+3. **Termination**: Forcefully stopped the rogue process using `Stop-Process -Id 33484 -Force`.
+4. **Restoration**: Restarted the Meddash `api_server.py` on port 8000, restoring all bridge communication and pipeline functionality.
+
+---
+
+## [2026-03-26] - Sandbox UI: Step 3 Scholar Checkbox Auto-Select Regression
+
+### Incident Description
+In `Step 3 - Google Scholar Citation Parsing` on the Campaign Sandbox Validation page, clicking one KOL checkbox could visually select all KOL checkboxes even when the `Select All` button was not pressed.
+
+### Root Cause Analysis (RCA)
+Primary root cause was an identifier mismatch between backend payload and frontend state logic:
+1. **Backend contract**: `/api/db/sandbox` returns `id AS kol_id`.
+2. **Frontend bug**: Selection state used `kol.id` in checkbox `checked`, row toggle, preselect-verified logic, and select-all list generation.
+3. **Effect**: Because `kol.id` was undefined for sandbox rows, checkboxes could share a non-unique selection state and appear bulk-selected after single-row interaction.
+
+### Resolution
+1. Rewired Step 3 selection logic to use `kol.kol_id` consistently for:
+   - per-row checkbox `checked`
+   - per-row checkbox toggle handler
+   - preselecting verified KOLs
+   - select-all list generation
+2. Added ID guards (`Number.isFinite`) so only valid numeric KOL IDs are selectable.
+3. Updated row keying to `kol.kol_id || idx` to stabilize rendering.
+4. Kept the explicit bulk action control (`Select All` / `Deselect All`) and retained `e.stopPropagation()` in row checkbox handlers.
+
+### Files Modified
+- `meddash-frontend/src/app/sandbox/page.tsx`
+
+---
+
+## [2026-03-26] - Scholar Sync: No-Candidate Failures Hidden From System Health
+
+### Incident Description
+During `Step 3 - Google Scholar Citation Parsing` for Pull ID `001`, the selected KOLs `Guohua Liu` and `Xinyue Cheng` both resolved to `scholar_failed`. At the same time, the `System Health Override` page showed no useful execution log for the Scholar batch run, making it difficult to determine whether the issue was a script crash, API issue, or a genuine no-candidate search result.
+
+### Root Cause Analysis (RCA)
+1. **Observability Wiring Gap**: The backend writes Scholar batch logs to `scholar_sync_<pull_id>.log`, but the frontend `System Health` page only knew how to resolve dynamic log names for `sandbox_dedup_<pull_id>`. As a result, Step 3 logs were being generated on disk but were not visible in the override UI.
+2. **Process Tracking Gap**: `/api/sandbox/run_scholar_sync` launched the sync in a background thread without registering the batch under `active_processes`, so the health monitor could not reliably surface live execution status for a Scholar batch.
+3. **Search Recall Weakness**: `sync_scholar_citations.py` only queried SerpApi once using the exact full KOL name. For common names or transliterated East Asian author profiles, that single query path was too brittle and could return zero candidates even when an author profile might still be discoverable through variant search forms.
+
+### Resolution
+1. **System Health UI Fix**: Added a dedicated `Scholar Sync` log viewer mode on the frontend health page. It now resolves Pull ID scoped Scholar logs as `scholar_sync_<pull_id>`.
+2. **Backend Process Tracking Fix**: Updated `/api/sandbox/run_scholar_sync` to:
+   - create and track a stable process key `scholar_sync_<pull_id>`
+   - write launch context into the same log file used by the Scholar engine
+   - register the subprocess in `active_processes` so execution state is visible to the health monitor
+3. **Scholar Search Hardening**: Updated `sync_scholar_citations.py` to try multiple fallback Scholar profile queries before declaring a no-candidate failure:
+   - exact full name
+   - first-initial + last-name form
+   - inverted last-name query
+   - name plus institution hint
+4. **Deeper Logging**: Added query-attempt logging so future failures explicitly show which Scholar profile searches were attempted and how many candidates each returned.
+
+### Files Modified
+- `Meddash_organized_backend/api_server.py`
+- `Meddash_organized_backend/09_Scholar_Engine/sync_scholar_citations.py`
+- `meddash-frontend/src/app/health/page.tsx`
+
+---
+
+## [2026-03-26] - Scholar Sync: Optional Manual URL Enrichment Mode
+
+### Change Description
+Retained `Step 3 - Google Scholar Citation Parsing` on the Campaign Sandbox Validation page, but refactored its operational role from automatic author discovery into an optional manual enrichment lane. Users can now paste a direct Google Scholar profile URL or raw Scholar `user` ID per KOL and run the step only for the rows they choose to enrich.
+
+### Why This Change Was Needed
+Automatic name-based Scholar discovery is currently unreliable because upstream Scholar profile search via SerpApi is no longer dependable for author lookup. However, direct author-profile fetch by known Scholar `user` ID remains viable. This makes manual URL-driven enrichment the most stable short-term workflow.
+
+### Resolution
+1. Added an editable `Scholar Profile URL` column to the sandbox KOL table when Step 3 is opened.
+2. Changed the Step 3 submission flow to only process selected KOLs that have a pasted Scholar URL or raw Scholar ID.
+3. Added backend parsing logic to extract the Scholar `user` ID from either:
+   - a full Google Scholar profile URL
+   - a raw Scholar ID string
+4. Updated the backend to fetch author metrics directly from the Scholar author endpoint and persist:
+   - `scholar_id`
+   - `scholar_status`
+   - `scholar_profile_url`
+   - citation metrics in `kol_scholar_metrics`
+5. Left Step 3 fully optional so sandbox KOL validation and eventual commit can continue even when no Scholar data is manually attached.
+
+### Files Modified
+- `meddash-frontend/src/app/sandbox/page.tsx`
+- `Meddash_organized_backend/api_server.py`
+- `Meddash_organized_backend/09_Scholar_Engine/sync_scholar_citations.py`

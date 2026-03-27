@@ -13,7 +13,12 @@ export default function Health() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Resolve the actual log script name (sandbox tab uses dynamic pull_id)
-  const resolvedScript = activeScript === "sandbox_dedup" ? `sandbox_dedup_${sandboxPullId}` : activeScript;
+  const resolvedScript =
+    activeScript === "sandbox_dedup"
+      ? `sandbox_dedup_${sandboxPullId}`
+      : activeScript === "scholar_sync"
+        ? `scholar_sync_${sandboxPullId}`
+        : activeScript;
 
   // Poll for live logs every 1.5 seconds when looking at a script
   useEffect(() => {
@@ -67,7 +72,8 @@ export default function Health() {
     { id: "ct_crawler", name: "Clinical Trials Engine", intent: "Scrape NIH Database" },
     { id: "biocrawler", name: "BioCrawler Lead Gen", intent: "Map BioTech Startups" },
     { id: "ta_landscape", name: "Product Gen: TA Landscape", intent: "Compile Final PDF" },
-    { id: "sandbox_dedup", name: "Sandbox Disambiguation", intent: "Campaign Dedup Engine" }
+    { id: "sandbox_dedup", name: "Sandbox Disambiguation", intent: "Campaign Dedup Engine" },
+    { id: "scholar_sync", name: "Scholar Sync", intent: "Campaign Citation Parsing" }
   ];
 
   return (
@@ -98,7 +104,7 @@ export default function Health() {
                  {activeScript === s.id && (
                      <div style={{ marginTop: '1.5rem' }}>
                        {/* Pull ID input for sandbox disambiguation tab */}
-                       {s.id === "sandbox_dedup" && (
+                       {(s.id === "sandbox_dedup" || s.id === "scholar_sync") && (
                          <div style={{ marginBottom: '1rem' }}>
                            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Pull ID</label>
                            <input
@@ -113,15 +119,15 @@ export default function Health() {
                        )}
                        <button 
                          onClick={(e) => { e.stopPropagation(); triggerExecution(); }}
-                         disabled={isRunning || s.id === "sandbox_dedup"}
+                         disabled={isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync"}
                          style={{
                            width: '100%',
                            padding: '0.75rem',
-                           background: (isRunning || s.id === "sandbox_dedup") ? 'var(--bg-glass)' : 'var(--accent-blue)',
-                           color: (isRunning || s.id === "sandbox_dedup") ? 'var(--text-secondary)' : 'white',
+                           background: (isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync") ? 'var(--bg-glass)' : 'var(--accent-blue)',
+                           color: (isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync") ? 'var(--text-secondary)' : 'white',
                            border: 'none',
                            borderRadius: '4px',
-                           cursor: (isRunning || s.id === "sandbox_dedup") ? 'not-allowed' : 'pointer',
+                           cursor: (isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync") ? 'not-allowed' : 'pointer',
                            fontWeight: 'bold'
                          }}
                        >

@@ -10,6 +10,8 @@ Tier 4: None of above             → scholar_review_queue
 """
 import os
 import argparse
+import logging
+import re
 import requests
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
@@ -26,23 +28,69 @@ if not SERPAPI_KEY or not SUPABASE_URI:
     exit(1)
 
 pg_engine = create_engine(SUPABASE_URI)
+module_logger = logging.getLogger(__name__)
+
+def build_scholar_queries(name: str, institution: str = ""):
+    """Builds fallback Scholar profile queries to improve recall."""
+    queries = []
+    normalized_name = (name or "").strip()
+    normalized_institution = (institution or "").strip()
+
+    if normalized_name:
+        queries.append(normalized_name)
+        parts = [part for part in normalized_name.split() if part]
+        if len(parts) >= 2:
+            first_name = " ".join(parts[:-1])
+            last_name = parts[-1]
+            queries.append(f"{parts[0][0]} {last_name}")
+            queries.append(f"{last_name}, {first_name}")
+
+    if normalized_name and normalized_institution:
+        institution_terms = [term.strip(",.") for term in normalized_institution.split() if len(term.strip(",.")) > 3]
+        institution_hint = " ".join(institution_terms[:4])
+        if institution_hint:
+            queries.append(f"{normalized_name} {institution_hint}")
+
+    deduped = []
+    seen = set()
+    for query in queries:
+        query_key = query.lower()
+        if query and query_key not in seen:
+            deduped.append(query)
+            seen.add(query_key)
+    return deduped
 
 
-def search_scholar_candidates(name: str):
-    """Returns top 3 Scholar profile candidates for a given name."""
-    print(f"Searching SerpApi for Scholar candidates: {name}")
-    params = {
-        "engine": "google_scholar_profiles",
-        "mauthors": name,
-        "hl": "en",
-        "api_key": SERPAPI_KEY
-    }
-    try:
-        res = requests.get("https://serpapi.com/search", params=params).json()
-        return res.get("profiles", [])[:3]
-    except Exception as e:
-        print(f"SerpApi Error during profile search: {e}")
-    return []
+def search_scholar_candidates(name: str, institution: str = ""):
+    """Returns top Scholar profile candidates for a KOL using fallback query variants."""
+    profiles = []
+    seen_ids = set()
+
+    for query in build_scholar_queries(name, institution):
+        print(f"Searching SerpApi for Scholar candidates: {query}")
+        module_logger.info(f"Scholar profile query: {query}")
+        params = {
+            "engine": "google_scholar_profiles",
+            "mauthors": query,
+            "hl": "en",
+            "api_key": SERPAPI_KEY
+        }
+        try:
+            res = requests.get("https://serpapi.com/search", params=params, timeout=30).json()
+            candidates = res.get("profiles", [])
+            module_logger.info(f"Profile query returned {len(candidates)} candidates.")
+            for candidate in candidates:
+                author_id = candidate.get("author_id")
+                if author_id and author_id not in seen_ids:
+                    profiles.append(candidate)
+                    seen_ids.add(author_id)
+            if profiles:
+                return profiles[:5]
+        except Exception as e:
+            print(f"SerpApi Error during profile search: {e}")
+            module_logger.warning(f"SerpApi profile search failed for query '{query}': {e}")
+
+    return profiles[:5]
 
 
 def fetch_scholar_author_data(scholar_id: str):
@@ -55,11 +103,27 @@ def fetch_scholar_author_data(scholar_id: str):
         "api_key": SERPAPI_KEY
     }
     try:
-        res = requests.get("https://serpapi.com/search", params=params).json()
+        res = requests.get("https://serpapi.com/search", params=params, timeout=30).json()
         return res
     except Exception as e:
         print(f"SerpApi Error during author fetch: {e}")
     return {}
+
+
+def extract_scholar_id(value: str):
+    """Extracts the Google Scholar user ID from either a full URL or a raw ID."""
+    raw_value = (value or "").strip()
+    if not raw_value:
+        return None
+
+    match = re.search(r"[?&]user=([A-Za-z0-9_-]+)", raw_value)
+    if match:
+        return match.group(1)
+
+    if re.fullmatch(r"[A-Za-z0-9_-]+", raw_value):
+        return raw_value
+
+    return None
 
 
 def extract_metrics(author_data: dict):
@@ -181,6 +245,96 @@ def upsert_metrics(conn, kol_id, scholar_id, metrics):
     conn.commit()
 
 
+def sync_manual_scholar_entries(pull_id: str, targets: list):
+    """
+    Processes manually supplied Scholar profile URLs/IDs for selected sandbox KOLs.
+    This bypasses name-based Scholar discovery and pulls metrics directly.
+    """
+    log_dir = os.path.join(base_dir, "07_DevOps_Observability")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, f"scholar_sync_{pull_id}.log")
+
+    file_handler = logging.FileHandler(log_path, mode='w', encoding='utf-8')
+    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger = logging.getLogger(f"scholar_manual_{pull_id}")
+    logger.handlers.clear()
+    logger.addHandler(file_handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+    logger.info(f"=== Manual Scholar Sync Starting for pull_id: {pull_id} ({len(targets)} targets) ===")
+
+    results = []
+
+    with pg_engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_status TEXT DEFAULT 'pending'"))
+            conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_id TEXT"))
+            conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_profile_url TEXT"))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
+        for idx, target in enumerate(targets):
+            kol_id = int(target["kol_id"])
+            scholar_value = (target.get("scholar_url") or "").strip()
+            logger.info(f"[{idx+1}/{len(targets)}] Processing KOL ID: {kol_id}")
+
+            scholar_id = extract_scholar_id(scholar_value)
+            if not scholar_id:
+                logger.warning(f"  Invalid Scholar URL or ID supplied: {scholar_value}")
+                conn.execute(
+                    text("UPDATE kols_staging SET scholar_status = 'scholar_failed' WHERE id = :id"),
+                    {"id": kol_id}
+                )
+                conn.commit()
+                results.append({"kol_id": kol_id, "status": "scholar_failed", "reason": "invalid_url"})
+                continue
+
+            author_data = fetch_scholar_author_data(scholar_id)
+            if not author_data or not author_data.get("author"):
+                logger.warning(f"  Scholar author fetch failed for scholar_id={scholar_id}")
+                conn.execute(
+                    text("""
+                        UPDATE kols_staging
+                        SET scholar_status = 'scholar_failed',
+                            scholar_profile_url = :url
+                        WHERE id = :id
+                    """),
+                    {"id": kol_id, "url": scholar_value}
+                )
+                conn.commit()
+                results.append({"kol_id": kol_id, "status": "scholar_failed", "reason": "fetch_failed"})
+                continue
+
+            metrics = extract_metrics(author_data)
+            upsert_metrics(conn, kol_id, scholar_id, metrics)
+            conn.execute(
+                text("""
+                    UPDATE kols_staging
+                    SET scholar_status = 'scholar_verified',
+                        scholar_id = :sid,
+                        scholar_profile_url = :url
+                    WHERE id = :id
+                """),
+                {"id": kol_id, "sid": scholar_id, "url": scholar_value}
+            )
+            conn.commit()
+
+            logger.info(
+                f"  Scholar verified: scholar_id={scholar_id}, citations={metrics['total_citations']}, "
+                f"h_index={metrics['h_index']}, i10_index={metrics['i10_index']}"
+            )
+            results.append({"kol_id": kol_id, "status": "scholar_verified", "scholar_id": scholar_id, **metrics})
+
+    logger.info(
+        f"=== Manual Scholar Sync Complete: "
+        f"{sum(1 for r in results if r.get('status') == 'scholar_verified')} verified, "
+        f"{sum(1 for r in results if r.get('status') == 'scholar_failed')} failed ==="
+    )
+    return results
+
+
 def sync_single_kol(kol_id: str):
     print(f"\nInitiating On-Demand Scholar Sync for KOL: {kol_id}...")
 
@@ -230,7 +384,7 @@ def sync_single_kol(kol_id: str):
         print(f"KOL: {kol_name} | ORCID: {kol_orcid} | Institution: {kol_institution} | {len(kol_pub_titles)} publications loaded.")
 
         # Search Scholar for candidates
-        candidates = search_scholar_candidates(kol_name)
+        candidates = search_scholar_candidates(kol_name, kol_institution)
         if not candidates:
             print(f"ERROR: No Scholar profiles found for '{kol_name}'.")
             return
@@ -262,11 +416,17 @@ def sync_sandbox_selected(pull_id: str, kol_ids: list):
     os.makedirs(log_dir, exist_ok=True)
     log_path = os.path.join(log_dir, f"scholar_sync_{pull_id}.log")
     
-    file_handler = logging.FileHandler(log_path, mode='w')
+    file_handler = logging.FileHandler(log_path, mode='a', encoding='utf-8')
     file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger = logging.getLogger(f"scholar_{pull_id}")
+    logger.handlers.clear()
     logger.addHandler(file_handler)
     logger.setLevel(logging.INFO)
+    logger.propagate = False
+    module_logger.handlers.clear()
+    module_logger.addHandler(file_handler)
+    module_logger.setLevel(logging.INFO)
+    module_logger.propagate = False
     
     logger.info(f"=== Scholar Sync Starting for pull_id: {pull_id} ({len(kol_ids)} KOLs selected) ===")
     
@@ -329,7 +489,7 @@ def sync_sandbox_selected(pull_id: str, kol_ids: list):
                 kol_pub_titles = []
             
             # Search Scholar for candidates
-            candidates = search_scholar_candidates(kol_name)
+            candidates = search_scholar_candidates(kol_name, kol_institution)
             if not candidates:
                 logger.warning(f"  No Scholar profiles found for '{kol_name}'.")
                 conn.execute(text("UPDATE kols_staging SET scholar_status = 'scholar_failed' WHERE id = :id"), {"id": kol_id})
@@ -378,4 +538,3 @@ if __name__ == "__main__":
         sync_single_kol(args.kol_id)
     else:
         print("Usage: --kol_id <id> OR --pull_id <pid> --kol_ids <id1,id2,id3>")
-

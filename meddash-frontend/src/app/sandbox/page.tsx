@@ -21,6 +21,13 @@ export default function CampaignSandbox() {
   const [scholarData, setScholarData] = useState<any[]>([]);
   const [scholarReviewQueue, setScholarReviewQueue] = useState<any[]>([]);
   const [scholarSyncing, setScholarSyncing] = useState(false);
+  const [manualScholarUrls, setManualScholarUrls] = useState<Record<number, string>>({});
+  const selectableKolIds = kols
+    .map(k => k.kol_id)
+    .filter((id): id is number => Number.isFinite(id));
+
+  const buildScholarUrl = (scholarId: string) =>
+    scholarId ? `https://scholar.google.com/citations?hl=en&user=${scholarId}` : "";
 
   const fetchSandbox = async () => {
     if (!pullId) return;
@@ -145,10 +152,10 @@ export default function CampaignSandbox() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedKolIds.size === kols.length) {
+    if (selectedKolIds.size === selectableKolIds.length) {
       setSelectedKolIds(new Set());
     } else {
-      setSelectedKolIds(new Set(kols.map(k => k.id)));
+      setSelectedKolIds(new Set(selectableKolIds));
     }
   };
 
@@ -156,7 +163,15 @@ export default function CampaignSandbox() {
     setShowScholar(true);
     setShowHITL(false);
     // Pre-select all verified KOLs
-    setSelectedKolIds(new Set(kols.filter(k => k.verification_status === 'verified').map(k => k.id)));
+    setSelectedKolIds(
+      new Set(
+        kols
+          .filter(k => k.verification_status === 'verified')
+          .map(k => k.kol_id)
+          .filter((id): id is number => Number.isFinite(id))
+      )
+    );
+    setManualScholarUrls({});
     // Load existing scholar status
     await refreshScholarStatus();
   };
@@ -168,14 +183,28 @@ export default function CampaignSandbox() {
       if (!res.ok) throw new Error("Failed to fetch scholar status");
       const json = await res.json();
       setScholarData(json.data || []);
+      setManualScholarUrls(prev => {
+        const next = { ...prev };
+        for (const item of json.data || []) {
+          if (!next[item.id]) next[item.id] = item.scholar_profile_url || buildScholarUrl(item.scholar_id || "");
+        }
+        return next;
+      });
     } catch (e: any) {
       setActionStatus(`Scholar status error: ${e.message}`);
     }
   };
 
   const runScholarSync = async () => {
-    if (selectedKolIds.size === 0) {
-      setActionStatus("Select at least one KOL to sync.");
+    const targets = Array.from(selectedKolIds)
+      .map(kolId => ({
+        kol_id: kolId,
+        scholar_url: (manualScholarUrls[kolId] || "").trim()
+      }))
+      .filter(target => target.scholar_url);
+
+    if (targets.length === 0) {
+      setActionStatus("Paste at least one Scholar profile URL for a selected KOL.");
       return;
     }
     setScholarSyncing(true);
@@ -183,7 +212,7 @@ export default function CampaignSandbox() {
       const res = await fetch("http://localhost:8000/api/sandbox/run_scholar_sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kol_ids: Array.from(selectedKolIds), pull_id: pullId })
+        body: JSON.stringify({ pull_id: pullId, targets })
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.detail || "Scholar sync failed.");
@@ -344,23 +373,36 @@ export default function CampaignSandbox() {
                                 <tr style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textTransform: 'uppercase' }}>
                                     {showScholar && (
                                         <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-glass)', width: '40px' }}>
-                                            <input type="checkbox" checked={selectedKolIds.size === kols.length && kols.length > 0} onChange={toggleSelectAll} style={{ cursor: 'pointer', width: '16px', height: '16px' }} />
+                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>SEL</span>
                                         </th>
                                     )}
                                     <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-glass)' }}>Name</th>
                                     <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-glass)' }}>Specialty</th>
                                     <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-glass)' }}>Institution</th>
                                     <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-glass)' }}>Status</th>
+                                    {showScholar && (
+                                        <th style={{ padding: '1rem', borderBottom: '1px solid var(--border-glass)', minWidth: '320px' }}>Scholar Profile URL</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody>
                                 {kols.map((kol, idx) => {
                                     const sc = statusColor(kol.verification_status);
                                     return (
-                                        <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <tr key={kol.kol_id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                             {showScholar && (
                                                 <td style={{ padding: '1rem' }}>
-                                                    <input type="checkbox" checked={selectedKolIds.has(kol.id)} onChange={() => toggleKolSelection(kol.id)} style={{ cursor: 'pointer', width: '16px', height: '16px' }} />
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={selectedKolIds.has(kol.kol_id)} 
+                                                        onChange={(e) => {
+                                                            e.stopPropagation();
+                                                            if (Number.isFinite(kol.kol_id)) {
+                                                              toggleKolSelection(kol.kol_id);
+                                                            }
+                                                        }} 
+                                                        style={{ cursor: 'pointer', width: '18px', height: '18px' }} 
+                                                    />
                                                 </td>
                                             )}
                                             <td style={{ padding: '1rem', fontWeight: '500' }}>{kol.name}</td>
@@ -371,6 +413,20 @@ export default function CampaignSandbox() {
                                                     {kol.verification_status}
                                                 </span>
                                             </td>
+                                            {showScholar && (
+                                                <td style={{ padding: '1rem' }}>
+                                                    <input
+                                                        type="text"
+                                                        value={manualScholarUrls[kol.kol_id] || ""}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value;
+                                                            setManualScholarUrls(prev => ({ ...prev, [kol.kol_id]: value }));
+                                                        }}
+                                                        placeholder="Paste Scholar profile URL or user ID"
+                                                        style={{ width: '100%', padding: '0.65rem', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-glass)', borderRadius: '4px', color: 'white', fontSize: '0.85rem' }}
+                                                    />
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })}
@@ -470,8 +526,18 @@ export default function CampaignSandbox() {
                         </div>
                     </div>
 
+                    <div style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        Optional manual step: paste direct Google Scholar profile URLs only for the KOLs you want to enrich now. Blank rows will be skipped.
+                    </div>
+
                     {/* Run Scholar Sync Button */}
-                    <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button onClick={toggleSelectAll} style={{ padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid var(--border-glass)', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                                {selectedKolIds.size === selectableKolIds.length ? "Deselect All" : "Select All"}
+                            </button>
+                        </div>
+                        
                         <button
                             onClick={runScholarSync}
                             disabled={scholarSyncing || selectedKolIds.size === 0}

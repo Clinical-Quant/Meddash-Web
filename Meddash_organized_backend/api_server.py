@@ -658,33 +658,35 @@ def resolve_pair(payload: ResolvePairPayload):
 
 # ===== STEP 3: GOOGLE SCHOLAR CITATION PARSING ROUTES =====
 
+class ScholarManualTarget(BaseModel):
+    kol_id: int
+    scholar_url: str
+
+
 class ScholarSyncPayload(BaseModel):
-    kol_ids: list
     pull_id: str
+    targets: List[ScholarManualTarget] = []
 
 @app.post("/api/sandbox/run_scholar_sync")
 def run_scholar_sync(payload: ScholarSyncPayload):
-    """Launches the Scholar sync script for selected KOL IDs in a background thread."""
+    """Launches optional manual Scholar sync for selected KOLs with direct Scholar URLs/IDs."""
     if not SERPAPI_KEY_PRESENT:
         raise HTTPException(status_code=503, detail="SERPAPI_KEY not configured in .env.")
-    if not payload.kol_ids:
-        raise HTTPException(status_code=400, detail="No KOL IDs provided.")
-    
-    kol_ids_str = ",".join(str(x) for x in payload.kol_ids)
-    script_path = os.path.join(base_dir, "09_Scholar_Engine", "sync_scholar_citations.py")
-    log_path = os.path.join(base_dir, "07_DevOps_Observability", f"scholar_sync_{payload.pull_id}.log")
-    
-    cmd = f"python \"{script_path}\" --pull_id {payload.pull_id} --kol_ids {kol_ids_str}"
-    
+    if not payload.targets:
+        raise HTTPException(status_code=400, detail="No manual Scholar targets were provided.")
+
     def run_in_bg():
-        with open(log_path, "w") as log_f:
-            log_f.write(f"Executing Scholar Sync: {cmd}\n")
-        subprocess.run(cmd, shell=True, cwd=base_dir)
+        import sys
+        script_dir = os.path.join(base_dir, "09_Scholar_Engine")
+        if script_dir not in sys.path:
+            sys.path.insert(0, script_dir)
+        from sync_scholar_citations import sync_manual_scholar_entries
+        sync_manual_scholar_entries(payload.pull_id, [target.model_dump() for target in payload.targets])
     
     thread = threading.Thread(target=run_in_bg, daemon=True)
     thread.start()
     
-    return {"status": "success", "message": f"Scholar sync initiated for {len(payload.kol_ids)} KOLs (pull_id: {payload.pull_id})."}
+    return {"status": "success", "message": f"Manual Scholar sync initiated for {len(payload.targets)} KOLs (pull_id: {payload.pull_id})."}
 
 
 @app.get("/api/sandbox/scholar_status")
@@ -700,6 +702,7 @@ def get_scholar_status(pull_id: str):
             try:
                 conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_status TEXT DEFAULT 'pending'"))
                 conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_id TEXT"))
+                conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_profile_url TEXT"))
                 conn.commit()
             except Exception:
                 conn.rollback()
@@ -708,6 +711,7 @@ def get_scholar_status(pull_id: str):
                 SELECT s.id, s.first_name, s.last_name, s.institution, s.specialty,
                        COALESCE(s.scholar_status, 'pending') AS scholar_status, 
                        s.scholar_id,
+                       s.scholar_profile_url,
                        m.total_citations, m.h_index, m.i10_index, m.last_updated_date
                 FROM kols_staging s
                 LEFT JOIN kol_scholar_metrics m ON s.id::text = m.kol_id::text
@@ -724,6 +728,7 @@ def get_scholar_status(pull_id: str):
                     "specialty": r.specialty or "",
                     "scholar_status": r.scholar_status or "pending",
                     "scholar_id": r.scholar_id or "",
+                    "scholar_profile_url": r.scholar_profile_url or "",
                     "total_citations": r.total_citations if r.total_citations else None,
                     "h_index": r.h_index if r.h_index else None,
                     "i10_index": r.i10_index if r.i10_index else None,
@@ -825,4 +830,3 @@ if __name__ == "__main__":
     import uvicorn
     # Execution: uvicorn api_server:app --reload --host 0.0.0.0 --port 8000
     uvicorn.run("api_server:app", host="0.0.0.0", port=8000, reload=True)
-

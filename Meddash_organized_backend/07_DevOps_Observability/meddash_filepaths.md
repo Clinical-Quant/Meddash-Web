@@ -81,8 +81,21 @@
 *   **TA Pre-computation Data Fetcher:** `C:\Users\email\.gemini\antigravity\Meddash_organized_backend\05_Product_TA_Landscape\fetch_ta_landscape_data.py` (Product 2 - Executes the single up-front API fetch strategy across ClinicalTrials.gov, PubMed, NCCN, and internal databases `ct_trials.db`, `meddash_kols.db`, `biocrawler.db`. Created: 2026-03-12. Caches data to JSON/SQLite.)
 *   **Stepwise Generation Engine:** `C:\Users\email\.gemini\antigravity\Meddash_organized_backend\05_Product_TA_Landscape\generate_ta_landscape_stepwise.py` (Product 2 - Core Stepwise Generation Engine. Runs section-by-section based on the Style Guide, pausing for human-in-the-loop review, and outputs the parallel References Audit. Created: 2026-03-12.)
 
+## Next Gen (v2.0) PostgreSQL & Frontend Architecture
+*   **Central API Bridge (FastAPI):** `C:\Users\email\.gemini\antigravity\Meddash_organized_backend\api_server.py` (The main Next.js to Python/Supabase bridge. Port 8000. Handles all sandbox, explorer, and pipeline triggers.)
+*   **Next.js Frontend Workspace:** `C:\Users\email\.gemini\antigravity\meddash-frontend`
+*   **Campaign Sandbox (Validation Bay):** `C:\Users\email\.gemini\antigravity\meddash-frontend\src\app\sandbox\page.tsx`
+*   **Data Explorer Dashboard:** `C:\Users\email\.gemini\antigravity\meddash-frontend\src\app\explorer\page.tsx`
+*   **PostgreSQL (Supabase) URI:** Pre-configured in `.env` as `SUPABASE_URI`.
+*   **Bug & Incident Log (v2.0):** `C:\Users\email\.gemini\antigravity\CTO\MEDDASH_BACKEND_WORKFLOW\meddash backend workflow ver 2.0\bug_fix_log_v2.md`
+
+## Google Scholar Intelligence Engine (Step 3 Integration)
+*   **Scholar Sync Logic:** `C:\Users\email\.gemini\antigravity\Meddash_organized_backend\09_Scholar_Engine\sync_scholar_citations.py` (4-tier disambiguation: ORCID → Pub Match → Inst/Spec → HITL Review Queue. Requires `SERPAPI_KEY`.)
+*   **Scholar Manual Review Queue:** `C:\Users\email\.gemini\antigravity\Meddash_organized_backend\09_Scholar_Engine\scholar_review_queue_schema.sql` (Schema for Tier 4 escalation table.)
+*   **Scholar Metrics Datastore:** `kol_scholar_metrics` (PostgreSQL table linked to main `kols` via `kol_id`.)
+
 ## AI Agent Directives
-1.  **Do not duplicate databases:** If an agent needs access to KOL data, connect to the exact `.db` paths listed above using `sqlite3`.
+1.  **Do not duplicate databases:** If an agent needs access to KOL data, connect to the exact `.db` paths for legacy or `SUPABASE_URI` for v2.0.
 2.  **Respect Workspace Boundaries:** The BioCrawler agent must not modify the core `meddash` backend scripts, and vice-versa.
 3.  **Use Absolute Paths:** Never use relative paths when reading files across the architecture. Always use the paths outlined in this document.
 4.  **Maintain the Map:** Whenever an AI agent creates a new architectural file, database, or script, they MUST add its absolute path and a short description to this `meddash_filepaths.md` document for reference.
