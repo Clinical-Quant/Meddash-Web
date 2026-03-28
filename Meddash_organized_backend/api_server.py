@@ -3,7 +3,7 @@ import subprocess
 import threading
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import pandas as pd
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -30,6 +30,18 @@ app.add_middleware(
 
 # Global active process tracking
 active_processes = {}
+
+
+class ThreadProcessProxy:
+    """Lightweight poll-compatible wrapper so thread-backed jobs appear in Health logs."""
+    def __init__(self):
+        self.running = True
+
+    def mark_complete(self):
+        self.running = False
+
+    def poll(self):
+        return None if self.running else 0
 
 # ---------------------------------------------------------
 # Database Engine Initialization
@@ -345,6 +357,8 @@ def commit_sandbox(payload: SandboxActionPayload):
     try:
         with pg_engine.connect() as conn:
             from sqlalchemy import text
+            ensure_kols_identity_api(conn)
+            conn.commit()
             
             # 1. Fetch all pending/verified records targeted for commit
             staging_records = conn.execute(text("""
@@ -667,6 +681,28 @@ class ScholarSyncPayload(BaseModel):
     pull_id: str
     targets: List[ScholarManualTarget] = []
 
+
+def ensure_scholar_columns_api(conn, table_name: str):
+    if table_name not in ("kols_staging", "kols"):
+        raise ValueError(f"Unsupported scholar table: {table_name}")
+    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS scholar_status TEXT DEFAULT 'pending'"))
+    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS scholar_id TEXT"))
+    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS scholar_profile_url TEXT"))
+
+
+def ensure_kols_identity_api(conn):
+    """Backfills missing ids on final kols rows and restores an insert default sequence."""
+    conn.execute(text("CREATE SEQUENCE IF NOT EXISTS kols_id_seq"))
+    conn.execute(text("""
+        SELECT setval(
+            'kols_id_seq',
+            COALESCE((SELECT MAX(id) FROM kols WHERE id IS NOT NULL), 0) + 1,
+            false
+        )
+    """))
+    conn.execute(text("UPDATE kols SET id = nextval('kols_id_seq') WHERE id IS NULL"))
+    conn.execute(text("ALTER TABLE kols ALTER COLUMN id SET DEFAULT nextval('kols_id_seq')"))
+
 @app.post("/api/sandbox/run_scholar_sync")
 def run_scholar_sync(payload: ScholarSyncPayload):
     """Launches optional manual Scholar sync for selected KOLs with direct Scholar URLs/IDs."""
@@ -675,18 +711,120 @@ def run_scholar_sync(payload: ScholarSyncPayload):
     if not payload.targets:
         raise HTTPException(status_code=400, detail="No manual Scholar targets were provided.")
 
+    process_name = f"scholar_sync_{payload.pull_id}"
+    proxy = ThreadProcessProxy()
+    active_processes[process_name] = proxy
+
     def run_in_bg():
         import sys
         script_dir = os.path.join(base_dir, "09_Scholar_Engine")
         if script_dir not in sys.path:
             sys.path.insert(0, script_dir)
         from sync_scholar_citations import sync_manual_scholar_entries
-        sync_manual_scholar_entries(payload.pull_id, [target.model_dump() for target in payload.targets])
+        try:
+            sync_manual_scholar_entries(payload.pull_id, [target.model_dump() for target in payload.targets])
+        finally:
+            proxy.mark_complete()
     
     thread = threading.Thread(target=run_in_bg, daemon=True)
     thread.start()
     
     return {"status": "success", "message": f"Manual Scholar sync initiated for {len(payload.targets)} KOLs (pull_id: {payload.pull_id})."}
+
+
+@app.get("/api/scholar/final_kols")
+def get_final_kols_for_pull(pull_id: str):
+    """Returns final KOL records for a pull_id for manual scholar enrichment."""
+    if not pg_engine:
+        raise HTTPException(status_code=500, detail="Database Engine Offline.")
+    if not pull_id:
+        raise HTTPException(status_code=400, detail="pull_id is required.")
+
+    try:
+        with pg_engine.connect() as conn:
+            try:
+                ensure_kols_identity_api(conn)
+                ensure_scholar_columns_api(conn, "kols")
+                conn.commit()
+            except Exception:
+                conn.rollback()
+
+            rows = conn.execute(text("""
+                SELECT
+                    k.id,
+                    k.first_name,
+                    k.last_name,
+                    k.institution,
+                    k.specialty,
+                    COALESCE(k.scholar_status, 'pending') AS scholar_status,
+                    k.scholar_id,
+                    k.scholar_profile_url,
+                    m.total_citations,
+                    m.h_index,
+                    m.i10_index,
+                    m.last_updated_date
+                FROM kols k
+                LEFT JOIN kol_scholar_metrics m ON k.id::text = m.kol_id::text
+                WHERE :pull = ANY(string_to_array(k.pull_id, ','))
+                ORDER BY k.last_name, k.first_name
+            """), {"pull": pull_id}).fetchall()
+
+            data = []
+            for r in rows:
+                data.append({
+                    "id": r.id,
+                    "name": f"{r.first_name} {r.last_name}",
+                    "institution": r.institution or "",
+                    "specialty": r.specialty or "",
+                    "scholar_status": r.scholar_status or "pending",
+                    "scholar_id": r.scholar_id or "",
+                    "scholar_profile_url": r.scholar_profile_url or "",
+                    "total_citations": r.total_citations if r.total_citations is not None else None,
+                    "h_index": r.h_index if r.h_index is not None else None,
+                    "i10_index": r.i10_index if r.i10_index is not None else None,
+                    "last_synced": str(r.last_updated_date) if r.last_updated_date else None
+                })
+
+            return {"data": data, "total": len(data)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/scholar/run_final_sync")
+def run_final_scholar_sync(payload: ScholarSyncPayload):
+    """Launches manual Scholar sync for final KOL rows selected by pull_id."""
+    if not SERPAPI_KEY_PRESENT:
+        raise HTTPException(status_code=503, detail="SERPAPI_KEY not configured in .env.")
+    if not payload.targets:
+        raise HTTPException(status_code=400, detail="No final Scholar targets were provided.")
+
+    try:
+        with pg_engine.connect() as conn:
+            ensure_kols_identity_api(conn)
+            ensure_scholar_columns_api(conn, "kols")
+            conn.commit()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to prepare final kols scholar schema: {e}")
+
+    process_name = f"scholar_final_{payload.pull_id}"
+    proxy = ThreadProcessProxy()
+    active_processes[process_name] = proxy
+
+    def run_in_bg():
+        import sys
+        script_dir = os.path.join(base_dir, "09_Scholar_Engine")
+        if script_dir not in sys.path:
+            sys.path.insert(0, script_dir)
+        from sync_scholar_citations import sync_manual_final_scholar_entries
+        try:
+            sync_manual_final_scholar_entries(payload.pull_id, [target.model_dump() for target in payload.targets])
+        finally:
+            proxy.mark_complete()
+
+    thread = threading.Thread(target=run_in_bg, daemon=True)
+    thread.start()
+
+    return {"status": "success", "message": f"Manual final Scholar sync initiated for {len(payload.targets)} KOLs (pull_id: {payload.pull_id})."}
 
 
 @app.get("/api/sandbox/scholar_status")

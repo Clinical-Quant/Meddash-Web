@@ -85,14 +85,23 @@
 *   **Central API Bridge (FastAPI):** `C:\Users\email\.gemini\antigravity\Meddash_organized_backend\api_server.py` (The main Next.js to Python/Supabase bridge. Port 8000. Handles all sandbox, explorer, and pipeline triggers.)
 *   **Next.js Frontend Workspace:** `C:\Users\email\.gemini\antigravity\meddash-frontend`
 *   **Campaign Sandbox (Validation Bay):** `C:\Users\email\.gemini\antigravity\meddash-frontend\src\app\sandbox\page.tsx`
+*   **Final Scholar Enrichment Page:** `C:\Users\email\.gemini\antigravity\meddash-frontend\src\app\scholar\page.tsx` (Standalone manual Scholar enrichment lane for final `kols` rows by `pull_id`; validates Google Scholar URLs/raw user IDs and silently refreshes after background sync.)
+*   **System Health Page:** `C:\Users\email\.gemini\antigravity\meddash-frontend\src\app\health\page.tsx` (Operational log viewer for sandbox disambiguation, sandbox Scholar sync, and final Scholar sync pull-scoped logs.)
 *   **Data Explorer Dashboard:** `C:\Users\email\.gemini\antigravity\meddash-frontend\src\app\explorer\page.tsx`
 *   **PostgreSQL (Supabase) URI:** Pre-configured in `.env` as `SUPABASE_URI`.
 *   **Bug & Incident Log (v2.0):** `C:\Users\email\.gemini\antigravity\CTO\MEDDASH_BACKEND_WORKFLOW\meddash backend workflow ver 2.0\bug_fix_log_v2.md`
 
-## Google Scholar Intelligence Engine (Step 3 Integration)
+## Google Scholar Intelligence Engine (Manual URL Enrichment)
 *   **Scholar Sync Logic:** `C:\Users\email\.gemini\antigravity\Meddash_organized_backend\09_Scholar_Engine\sync_scholar_citations.py` (4-tier disambiguation: ORCID → Pub Match → Inst/Spec → HITL Review Queue. Requires `SERPAPI_KEY`.)
 *   **Scholar Manual Review Queue:** `C:\Users\email\.gemini\antigravity\Meddash_organized_backend\09_Scholar_Engine\scholar_review_queue_schema.sql` (Schema for Tier 4 escalation table.)
 *   **Scholar Metrics Datastore:** `kol_scholar_metrics` (PostgreSQL table linked to main `kols` via `kol_id`.)
+
+*   **Manual Scholar Sync Logs:** `C:\Users\email\.gemini\antigravity\Meddash_organized_backend\07_DevOps_Observability\scholar_sync_<pull_id>.log` (Per Pull ID logs for manual Scholar URL enrichment.)
+*   **Scholar Profile URL Column:** `kols_staging.scholar_profile_url` (Stores pasted Google Scholar profile URL or raw Scholar ID per KOL in sandbox.)
+*   **Final Scholar Sync Logs:** `C:\Users\email\.gemini\antigravity\Meddash_organized_backend\07_DevOps_Observability\scholar_final_<pull_id>.log` (Per-pull logs for final `kols` manual Scholar enrichment.)
+*   **Sandbox Scholar Columns:** `kols_staging.scholar_status`, `kols_staging.scholar_id`, `kols_staging.scholar_profile_url` (Optional manual Scholar enrichment state stored during sandbox validation.)
+*   **Final Scholar Columns:** `kols.scholar_status`, `kols.scholar_id`, `kols.scholar_profile_url` (Optional manual Scholar enrichment state stored on committed global KOL rows.)
+*   **Scholar Sync Current Mode:** Manual URL-driven enrichment for both `kols_staging` and final `kols`; accepts pasted Google Scholar profile URLs or raw Scholar user IDs, writes metrics to `kol_scholar_metrics`, and repairs missing final `kols.id` values before final sync.
 
 ## AI Agent Directives
 1.  **Do not duplicate databases:** If an agent needs access to KOL data, connect to the exact `.db` paths for legacy or `SUPABASE_URI` for v2.0.

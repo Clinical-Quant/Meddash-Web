@@ -30,6 +30,29 @@ if not SERPAPI_KEY or not SUPABASE_URI:
 pg_engine = create_engine(SUPABASE_URI)
 module_logger = logging.getLogger(__name__)
 
+
+def ensure_scholar_columns(conn, table_name: str):
+    """Ensures the required scholar enrichment columns exist on the target table."""
+    if table_name not in ("kols_staging", "kols"):
+        raise ValueError(f"Unsupported scholar table: {table_name}")
+    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS scholar_status TEXT DEFAULT 'pending'"))
+    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS scholar_id TEXT"))
+    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS scholar_profile_url TEXT"))
+
+
+def ensure_kols_identity(conn):
+    """Backfills missing ids on final kols rows and restores an insert default sequence."""
+    conn.execute(text("CREATE SEQUENCE IF NOT EXISTS kols_id_seq"))
+    conn.execute(text("""
+        SELECT setval(
+            'kols_id_seq',
+            COALESCE((SELECT MAX(id) FROM kols WHERE id IS NOT NULL), 0) + 1,
+            false
+        )
+    """))
+    conn.execute(text("UPDATE kols SET id = nextval('kols_id_seq') WHERE id IS NULL"))
+    conn.execute(text("ALTER TABLE kols ALTER COLUMN id SET DEFAULT nextval('kols_id_seq')"))
+
 def build_scholar_queries(name: str, institution: str = ""):
     """Builds fallback Scholar profile queries to improve recall."""
     queries = []
@@ -99,14 +122,19 @@ def fetch_scholar_author_data(scholar_id: str):
     params = {
         "engine": "google_scholar_author",
         "hl": "en",
-        "user": scholar_id,
+        "author_id": scholar_id,
         "api_key": SERPAPI_KEY
     }
     try:
         res = requests.get("https://serpapi.com/search", params=params, timeout=30).json()
+        if res.get("error"):
+            module_logger.warning(f"Scholar author API error for {scholar_id}: {res.get('error')}")
+        if res.get("search_metadata", {}).get("status") == "Error":
+            module_logger.warning(f"Scholar author API returned Error status for {scholar_id}.")
         return res
     except Exception as e:
         print(f"SerpApi Error during author fetch: {e}")
+        module_logger.warning(f"SerpApi author fetch exception for {scholar_id}: {e}")
     return {}
 
 
@@ -245,32 +273,31 @@ def upsert_metrics(conn, kol_id, scholar_id, metrics):
     conn.commit()
 
 
-def sync_manual_scholar_entries(pull_id: str, targets: list):
-    """
-    Processes manually supplied Scholar profile URLs/IDs for selected sandbox KOLs.
-    This bypasses name-based Scholar discovery and pulls metrics directly.
-    """
+def sync_manual_scholar_targets(table_name: str, pull_id: str, targets: list, log_prefix: str):
+    """Processes manually supplied Scholar profile URLs/IDs for either staging or final KOLs."""
     log_dir = os.path.join(base_dir, "07_DevOps_Observability")
     os.makedirs(log_dir, exist_ok=True)
-    log_path = os.path.join(log_dir, f"scholar_sync_{pull_id}.log")
+    log_path = os.path.join(log_dir, f"{log_prefix}_{pull_id}.log")
 
     file_handler = logging.FileHandler(log_path, mode='w', encoding='utf-8')
     file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-    logger = logging.getLogger(f"scholar_manual_{pull_id}")
+    logger = logging.getLogger(f"{log_prefix}_{pull_id}")
     logger.handlers.clear()
     logger.addHandler(file_handler)
     logger.setLevel(logging.INFO)
     logger.propagate = False
 
-    logger.info(f"=== Manual Scholar Sync Starting for pull_id: {pull_id} ({len(targets)} targets) ===")
+    logger.info(
+        f"=== Manual Scholar Sync Starting for table={table_name} pull_id={pull_id} ({len(targets)} targets) ==="
+    )
 
     results = []
 
     with pg_engine.connect() as conn:
         try:
-            conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_status TEXT DEFAULT 'pending'"))
-            conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_id TEXT"))
-            conn.execute(text("ALTER TABLE kols_staging ADD COLUMN IF NOT EXISTS scholar_profile_url TEXT"))
+            if table_name == "kols":
+                ensure_kols_identity(conn)
+            ensure_scholar_columns(conn, table_name)
             conn.commit()
         except Exception:
             conn.rollback()
@@ -283,12 +310,7 @@ def sync_manual_scholar_entries(pull_id: str, targets: list):
             scholar_id = extract_scholar_id(scholar_value)
             if not scholar_id:
                 logger.warning(f"  Invalid Scholar URL or ID supplied: {scholar_value}")
-                conn.execute(
-                    text("UPDATE kols_staging SET scholar_status = 'scholar_failed' WHERE id = :id"),
-                    {"id": kol_id}
-                )
-                conn.commit()
-                results.append({"kol_id": kol_id, "status": "scholar_failed", "reason": "invalid_url"})
+                results.append({"kol_id": kol_id, "status": "invalid_input", "reason": "invalid_url"})
                 continue
 
             author_data = fetch_scholar_author_data(scholar_id)
@@ -296,11 +318,11 @@ def sync_manual_scholar_entries(pull_id: str, targets: list):
                 logger.warning(f"  Scholar author fetch failed for scholar_id={scholar_id}")
                 conn.execute(
                     text("""
-                        UPDATE kols_staging
+                        UPDATE {table_name}
                         SET scholar_status = 'scholar_failed',
                             scholar_profile_url = :url
                         WHERE id = :id
-                    """),
+                    """.replace("{table_name}", table_name)),
                     {"id": kol_id, "url": scholar_value}
                 )
                 conn.commit()
@@ -311,12 +333,12 @@ def sync_manual_scholar_entries(pull_id: str, targets: list):
             upsert_metrics(conn, kol_id, scholar_id, metrics)
             conn.execute(
                 text("""
-                    UPDATE kols_staging
+                    UPDATE {table_name}
                     SET scholar_status = 'scholar_verified',
                         scholar_id = :sid,
                         scholar_profile_url = :url
                     WHERE id = :id
-                """),
+                """.replace("{table_name}", table_name)),
                 {"id": kol_id, "sid": scholar_id, "url": scholar_value}
             )
             conn.commit()
@@ -330,9 +352,23 @@ def sync_manual_scholar_entries(pull_id: str, targets: list):
     logger.info(
         f"=== Manual Scholar Sync Complete: "
         f"{sum(1 for r in results if r.get('status') == 'scholar_verified')} verified, "
-        f"{sum(1 for r in results if r.get('status') == 'scholar_failed')} failed ==="
+        f"{sum(1 for r in results if r.get('status') == 'scholar_failed')} failed, "
+        f"{sum(1 for r in results if r.get('status') == 'invalid_input')} invalid input ==="
     )
     return results
+
+
+def sync_manual_scholar_entries(pull_id: str, targets: list):
+    """
+    Processes manually supplied Scholar profile URLs/IDs for selected sandbox KOLs.
+    This bypasses name-based Scholar discovery and pulls metrics directly.
+    """
+    return sync_manual_scholar_targets("kols_staging", pull_id, targets, "scholar_sync")
+
+
+def sync_manual_final_scholar_entries(pull_id: str, targets: list):
+    """Processes manually supplied Scholar profile URLs/IDs for final KOL rows."""
+    return sync_manual_scholar_targets("kols", pull_id, targets, "scholar_final")
 
 
 def sync_single_kol(kol_id: str):

@@ -31,6 +31,12 @@ export default function Home() {
               <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Monitor automated crons and stream Python logs natively.</p>
             </div>
           </Link>
+          <Link href="/scholar" style={{ display: 'block' }}>
+            <div className="glass-panel card-hover" style={{ padding: '1.5rem', textAlign: 'left', height: '100%' }}>
+              <h3 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Scholar Enrichment</h3>
+              <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Optionally enrich final KOLs by pull ID with pasted Google Scholar profile URLs.</p>
+            </div>
+          </Link>
           <div className="glass-panel card-hover" style={{ padding: '1.5rem', textAlign: 'left' }}>
             <h3 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Generative Products</h3>
             <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Export KOL Briefs and TA Landscapes locally via API.</p>

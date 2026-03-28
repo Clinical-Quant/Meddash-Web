@@ -255,3 +255,147 @@ Automatic name-based Scholar discovery is currently unreliable because upstream 
 - `meddash-frontend/src/app/sandbox/page.tsx`
 - `Meddash_organized_backend/api_server.py`
 - `Meddash_organized_backend/09_Scholar_Engine/sync_scholar_citations.py`
+
+---
+
+## [2026-03-27] - Manual Scholar URL Sync: Direct Author Fetch Parameter Bug
+
+### Incident Description
+After pasting a valid direct Google Scholar profile URL for `Chanjiang Liu` in Pull ID `001`, the manual Scholar sync still failed. The log showed:
+
+`Scholar author fetch failed for scholar_id=ni8I7m0AAAAJ`
+
+even though the Scholar profile URL and extracted Scholar ID were valid.
+
+### Root Cause Analysis (RCA)
+The manual Scholar sync path correctly extracted the Scholar profile ID from the pasted URL, but the backend author-fetch request sent the wrong SerpApi parameter. The code used:
+
+- `user=<scholar_id>`
+
+However, SerpApi's `google_scholar_author` endpoint expects:
+
+- `author_id=<scholar_id>`
+
+Because of that mismatch, the API response did not contain a valid `author` payload, and the sync logic marked the KOL as `scholar_failed`.
+
+### Resolution
+1. Updated `fetch_scholar_author_data()` to call SerpApi with `author_id` instead of `user`.
+2. Added clearer warning logging when SerpApi returns:
+   - an explicit `error`
+   - a `search_metadata.status = Error`
+   - a low-level request exception
+
+### Files Modified
+- `Meddash_organized_backend/09_Scholar_Engine/sync_scholar_citations.py`
+
+---
+
+## [2026-03-27] - Final KOL Scholar Enrichment: URL Input Mirrors Across All Rows
+
+### Incident Description
+On the Final KOL Scholar Enrichment page, pasting a Scholar profile URL into one row caused the same value to appear in every row, even without clicking any bulk action.
+
+### Root Cause Analysis (RCA)
+The UI state used `kol.id` as the key for both manual URL inputs and checkbox selection. For some final KOL rows, `id` was missing or non-numeric, so multiple rows shared the same undefined key. React state updates then appeared to apply to all rows at once.
+
+### Resolution
+1. Added a stable per-row key (`__rowKey`) derived from a valid KOL ID when available, or a row index fallback.
+2. Re-keyed the manual Scholar URL state to `__rowKey` to prevent cross-row mirroring.
+3. Updated checkbox selection to use `__rowKey`, and disabled selection for rows lacking a valid KOL ID.
+4. Added a guard message when a pull_id returns rows without valid IDs.
+
+### Files Modified
+- `meddash-frontend/src/app/scholar/page.tsx`
+
+---
+
+## [2026-03-27] - Final KOL Scholar Enrichment: Checkboxes Disabled and Run Button Inactive
+
+### Incident Description
+After the row-level URL input bug was fixed, the Final KOL Scholar Enrichment page still could not be used operationally. The Scholar URL field could be edited per row, but:
+- row selection checkboxes were disabled or non-interactive
+- `Run Manual Scholar Parsing` remained inactive
+
+### Root Cause Analysis (RCA)
+This was caused by a deeper database integrity issue rather than the React checkbox component:
+1. The final `kols` table contained a large number of rows where `kols.id` was `NULL`.
+2. The Final Scholar Enrichment page correctly protects the sync action unless a valid writable KOL ID exists.
+3. Because the API payload is built from final `kols.id`, rows with missing IDs could not be selected safely, which left the run button disabled.
+4. The same schema defect also meant future commits into `kols` were at risk of continuing to create null IDs if the default sequence was not restored.
+
+### Resolution
+1. Added an automatic `kols` identity repair step in the backend:
+   - create `kols_id_seq` if missing
+   - backfill missing `kols.id` values
+   - restore `ALTER TABLE kols ALTER COLUMN id SET DEFAULT nextval('kols_id_seq')`
+2. Applied this repair before:
+   - loading final KOLs for Scholar enrichment
+   - running final Scholar sync
+   - committing sandbox KOLs into final `kols`
+3. Mirrored the same protection inside the Scholar sync engine so direct script execution also works safely against final `kols`.
+
+### Outcome
+Final KOL rows for pull `001` now return valid IDs across the board, which re-enables row selection and allows the manual Scholar parsing action to run normally.
+
+### Files Modified
+- `Meddash_organized_backend/api_server.py`
+- `Meddash_organized_backend/09_Scholar_Engine/sync_scholar_citations.py`
+
+---
+
+## [2026-03-27] - Final Scholar Enrichment: Invalid URL Submission + Status Looping
+
+### Incident Description
+After the final KOL Scholar Enrichment page became selectable again, two additional UX issues appeared during live use:
+- clicking `Run Manual Scholar Parsing` could mark a row as `scholar_failed`
+- the page repeatedly refreshed the left-side status box with `Loaded 196 final KOLs for pull ID 001`
+
+### Root Cause Analysis (RCA)
+1. **Invalid Input Submission**: The final scholar sync accepted any pasted string and forwarded it to the backend. In the observed run, the submitted value was not a Google Scholar URL at all, but:
+   - `https://www.youtube.com/shorts/EtkJ-vDGnc4`
+   The backend correctly classified this as an invalid Scholar URL/ID, but the overall UX looked like a sync failure instead of a user-input validation issue.
+2. **Polling Status Spam**: After launching a sync, the frontend started a 3-second polling loop that reused the same `loadKols()` function as a manual page load. That function always reset `actionStatus`, which caused the UI to repeatedly show the generic `Loaded 196 final KOLs...` message during background refreshes.
+
+### Resolution
+1. Added frontend validation so the final Scholar page now only accepts:
+   - a real `scholar.google.com` profile URL containing `user=`
+   - or a raw Scholar user ID
+2. If invalid entries are present in selected rows, the sync is blocked client-side and the UI shows a targeted correction message instead of dispatching the background job.
+3. Refactored `loadKols()` to support `silent` refresh mode for polling.
+4. Updated the polling loop after `Run Manual Scholar Parsing` to call silent refreshes only, preventing the `Loaded 196 final KOLs...` message from looping.
+5. Hardened the backend manual sync path so invalid inputs are logged as `invalid_input` without writing `scholar_failed` to the database.
+
+### Outcome
+The final Scholar page now behaves cleanly:
+- invalid non-Scholar URLs are blocked before submission
+- background refresh no longer spams the load-status message
+- malformed pasted input no longer pollutes `scholar_status` as a false backend failure
+
+### Files Modified
+- `meddash-frontend/src/app/scholar/page.tsx`
+- `Meddash_organized_backend/09_Scholar_Engine/sync_scholar_citations.py`
+
+---
+
+## [2026-03-27] - Workflow Documentation Sync: Manual Scholar Enrichment Architecture
+
+### Change Description
+After stabilizing the manual Google Scholar workflow, the v2.0 architecture documents were updated to match the live implementation.
+
+### Documentation Updates
+1. Synced the Mermaid schema to show:
+   - optional sandbox manual Scholar parsing
+   - dedicated final KOL Scholar enrichment tab
+   - System Health visibility for `scholar_sync_<pull_id>` and `scholar_final_<pull_id>`
+   - backend repair of missing final `kols.id` values before final Scholar sync
+2. Updated the filepaths map to include:
+   - final Scholar enrichment page
+   - System Health page
+   - final Scholar log path
+   - final Scholar columns on `kols`
+3. Preserved the bug log as the operational incident history for the new Scholar workflow shape.
+
+### Files Modified
+- `MEDDASH_BACKEND_WORKFLOW/ver 2.0_organized_meddashbackend_schema.txt`
+- `Meddash_organized_backend/07_DevOps_Observability/meddash_filepaths.md`
+- `MEDDASH_BACKEND_WORKFLOW/meddash backend workflow ver 2.0/bug_fix_log_v2.md`

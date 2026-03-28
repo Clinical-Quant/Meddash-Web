@@ -318,7 +318,7 @@ export default function CampaignSandbox() {
                     2. Human-in-the-Loop Disambiguation
                 </button>
                 <button onClick={openScholarPanel} disabled={isLoading || kols.length === 0} style={{ padding: '1rem', background: 'linear-gradient(to right, #f59e0b, #d97706)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                    3. Google Scholar Citation Parsing
+                    3. Manual Scholar Parsing
                 </button>
                 <button onClick={() => handleAction("export")} disabled={isLoading || kols.length === 0} style={{ padding: '1rem', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid var(--border-glass)', borderRadius: '4px', cursor: 'pointer' }}>
                     4. Export Client Text Report

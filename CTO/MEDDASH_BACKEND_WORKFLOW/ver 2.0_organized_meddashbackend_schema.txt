@@ -1,4 +1,4 @@
-Last Updated: 2026-03-26 12:00 EST
+Last Updated: 2026-03-27 12:35 EST
 
 ---
 config:
@@ -9,6 +9,7 @@ flowchart TB
         ui_dashboard[Dashboard UI Page]
         ui_pipeline[Crawler Control & Execution UI]
         ui_sandbox[Campaign Sandbox Validation UI]
+        ui_scholar[Scholar Enrichment UI (Final KOLs Manual Lane)]
         ui_health[System Health & Log Streaming UI]
   end
 
@@ -23,6 +24,10 @@ flowchart TB
         db_ingestion_py[db_ingestion.py Pull ID Staging Injection]
         kol_disambig_tier1[kol_disambiguator.py Tier 1 Auto-Engine]
         kol_weight_py[kol_weight.py APW log 1 sum SJR]
+  end
+
+ subgraph scholar_engine[09_Scholar_Engine]
+        sync_scholar_citations_py[sync_scholar_citations.py Manual Scholar URL Sync + Final ID Repair]
   end
 
  subgraph ct_engine[02_CT_Data_Engine]
@@ -67,6 +72,7 @@ flowchart TB
         kol_merge_candidates_db[(kol_merge_candidates Tier 2 Queue)]
         deep_disambiguation_db[(deep_disambiguation_needed Tier 3 Escalation)]
         meddash_kols_db[(meddash_kols Global Intelligence Target)]
+        kol_scholar_metrics_db[(kol_scholar_metrics Scholar Metrics)]
         ct_trials_db[(ct_trials CT Engine DB)]
         biocrawler_leads_db[(biocrawler_leads Relationship DB)]
         journal_metrics_db[(journal_metrics SCImago SJR)]
@@ -74,12 +80,16 @@ flowchart TB
 
     %% UI to API Flows
     ui_pipeline -- POST Configuration --> api_server
-    ui_health -- GET /api/system/logs --> api_server
+    ui_health -- GET /api/system/logs (sandbox_dedup / scholar_sync / scholar_final) --> api_server
     ui_sandbox -- GET staged kols / Resolve pairs --> api_server
+    ui_sandbox -- Step 3: Manual Scholar URLs (Sandbox Optional) --> api_server
+    ui_scholar -- Load final kols by pull_id / Manual Scholar URLs --> api_server
 
     %% API to Backend Flows
     api_server -- Subprocess threads --> run_pipeline_py & ct_crawler_py & biocrawler_py_api
     api_server -- Read/Write --> kols_staging_db & kol_merge_candidates_db & deep_disambiguation_db
+    api_server -- Manual Scholar Sync (staging/final) --> sync_scholar_citations_py
+    api_server -- Repair missing final kols.id before load/commit/final sync --> meddash_kols_db
 
     %% KOL Pipeline Core Process
     nightly_scheduler_py -- Triggers --> run_pipeline_py
@@ -100,6 +110,13 @@ flowchart TB
     ui_sandbox -- Tier 2: Same/Distinct Resolution --> kols_staging_db
     ui_sandbox -- Tier 2: Escalate --> deep_disambiguation_db
     ui_sandbox -- Sandbox Approved Commit --> meddash_kols_db
+
+    %% Manual Scholar Enrichment (Optional Sandbox + Final Back-Office Lane)
+    sync_scholar_citations_py -- Validate pasted Scholar URL / raw user ID --> ui_sandbox
+    sync_scholar_citations_py -- Validate pasted Scholar URL / raw user ID --> ui_scholar
+    sync_scholar_citations_py -- Update scholar_status & scholar_profile_url --> kols_staging_db
+    sync_scholar_citations_py -- Update scholar_status & scholar_profile_url --> meddash_kols_db
+    sync_scholar_citations_py -- Upsert metrics --> kol_scholar_metrics_db
 
     kol_weight_py -- UPDATE APW --> meddash_kols_db
     journal_metrics_db -- JOIN via ISSN --> kol_weight_py
@@ -141,4 +158,3 @@ flowchart TB
     weekly_ontology_sync_bat --> build_disease_ontology_py
     build_disease_ontology_py -. Upserts Medical Concepts .-> disease_criteria_db
     disease_criteria_db -. Autocomplete & Standardization .-> frontend
-

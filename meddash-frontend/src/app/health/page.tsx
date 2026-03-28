@@ -18,6 +18,8 @@ export default function Health() {
       ? `sandbox_dedup_${sandboxPullId}`
       : activeScript === "scholar_sync"
         ? `scholar_sync_${sandboxPullId}`
+        : activeScript === "scholar_final"
+          ? `scholar_final_${sandboxPullId}`
         : activeScript;
 
   // Poll for live logs every 1.5 seconds when looking at a script
@@ -73,7 +75,8 @@ export default function Health() {
     { id: "biocrawler", name: "BioCrawler Lead Gen", intent: "Map BioTech Startups" },
     { id: "ta_landscape", name: "Product Gen: TA Landscape", intent: "Compile Final PDF" },
     { id: "sandbox_dedup", name: "Sandbox Disambiguation", intent: "Campaign Dedup Engine" },
-    { id: "scholar_sync", name: "Scholar Sync", intent: "Campaign Citation Parsing" }
+    { id: "scholar_sync", name: "Scholar Sync", intent: "Sandbox Manual Scholar Parsing" },
+    { id: "scholar_final", name: "Scholar Final Parsing", intent: "Final KOL Manual Scholar Parsing" }
   ];
 
   return (
@@ -104,7 +107,7 @@ export default function Health() {
                  {activeScript === s.id && (
                      <div style={{ marginTop: '1.5rem' }}>
                        {/* Pull ID input for sandbox disambiguation tab */}
-                       {(s.id === "sandbox_dedup" || s.id === "scholar_sync") && (
+                       {(s.id === "sandbox_dedup" || s.id === "scholar_sync" || s.id === "scholar_final") && (
                          <div style={{ marginBottom: '1rem' }}>
                            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Pull ID</label>
                            <input
@@ -119,19 +122,19 @@ export default function Health() {
                        )}
                        <button 
                          onClick={(e) => { e.stopPropagation(); triggerExecution(); }}
-                         disabled={isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync"}
+                         disabled={isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync" || s.id === "scholar_final"}
                          style={{
                            width: '100%',
                            padding: '0.75rem',
-                           background: (isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync") ? 'var(--bg-glass)' : 'var(--accent-blue)',
-                           color: (isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync") ? 'var(--text-secondary)' : 'white',
+                           background: (isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync" || s.id === "scholar_final") ? 'var(--bg-glass)' : 'var(--accent-blue)',
+                           color: (isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync" || s.id === "scholar_final") ? 'var(--text-secondary)' : 'white',
                            border: 'none',
                            borderRadius: '4px',
-                           cursor: (isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync") ? 'not-allowed' : 'pointer',
+                           cursor: (isRunning || s.id === "sandbox_dedup" || s.id === "scholar_sync" || s.id === "scholar_final") ? 'not-allowed' : 'pointer',
                            fontWeight: 'bold'
                          }}
                        >
-                         {s.id === "sandbox_dedup" ? "LOG VIEWER ONLY" : isRunning ? "PROCESS ACTIVE 🔴" : "▶ RUN SCRIPT NOW"}
+                         {s.id === "sandbox_dedup" || s.id === "scholar_sync" || s.id === "scholar_final" ? "LOG VIEWER ONLY" : isRunning ? "PROCESS ACTIVE 🔴" : "▶ RUN SCRIPT NOW"}
                        </button>
                      </div>
                  )}
