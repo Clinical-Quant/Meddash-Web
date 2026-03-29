@@ -69,21 +69,21 @@ Before we write the React forms, we must map the hardcoded variables hidden insi
 **1. KOL Data Engine (`01_KOL_Data_Engine/run_pipeline.py`)**
 - **Current State:** Hardcoded python array `TARGETS = ['Oncology', 'Cardiology', 'Immunology', 'Neurology']`
 - **Proposed UI Parameters:** 
-  - `Search Targets`: Multi-Select Dropdown (Allowing you to pick Oncology, Neurology, or type a custom term like 'Glioblastoma')
+  - `Search Targets`: Multi-Select Dropdown (Allowing you to pick Oncology, Neurology, or type a custom term like 'Glioblastoma') ###! this should be included, but also another space for disease name and another space for mesh number entry should be included
   - `Publication Count Limit`: Number input (default 50)
 
 **2. Clinical Trials Engine (`02_CT_Data_Engine/ct_crawler.py`)**
 - **Current State:** Command Line Arguments (`--mode`, `--query`, `--max`)
 - **Proposed UI Parameters:**
   - `Execution Mode`: Dropdown (Full Array, Delta/Nightly Updates, or Targeted Query)
-  - `Target Query`: Text Input for specific conditions (e.g. "HER2 Breast Cancer")
+  - `Target Query`: Text Input for specific conditions (e.g. "HER2 Breast Cancer") ##space for disease name and another space for mesh number entry should be included, also phase of the trial 1,2,3,completed, stopped etc and all, also time period of trials to to from
   - `Max Result Cap`: Number Input (e.g. 1000)
 
 **3. BioCrawler GTM Engine (`03_BioCrawler_GTM/biocrawler.py`)**
 - **Current State:** Hardcoded MeSH Ontology Tree `["Neoplasms", "Carcinoma, Non-Small-Cell Lung", "Melanoma", "Lymphoma", "Leukemia, Myeloid, Acute"]`
 - **Proposed UI Parameters:**
   - `Execution Mode`: Dropdown (Fast API Mode vs Slow Deep-Enrichment Mode)
-  - `Custom MeSH Ontology Array`: Dynamic "Tag" Input allowing you to delete default tags and type new highly specific ontological keywords before clicking RUN.
+  - `Custom MeSH Ontology Array`: Dynamic "Tag" Input allowing you to delete default tags and type new highly specific ontological keywords before clicking RUN. ####space for disease name and another space for mesh number entry should be included, also phase of the trial 1,2,3,completed, stopped etc and all, also time period of trials to to from also we should have an option to check box to batch select wether to ct engine and biocrawler sequantially where biocrawler triggered for the same criteria
 
 **4. TA Landscape Generator (`05_Product_TA_Landscape`)**
 - **Proposed UI Parameters:**
