@@ -34,19 +34,21 @@ To stay focused and keep the context window narrow, we operate with a strict hie
   - *This subfolder is dedicated to building meddash.ai saas from the databases and additional studies.*
 - **Backend Architecture (Version 1.0):** c:\Users\email\.gemini\antigravity\CTO\MEDDASH_BACKEND_WORKFLOW\meddash backend workflow ver 1.0
 - **Frontend / SaaS Backend (Version 2.0):** c:\Users\email\.gemini\antigravity\CTO\MEDDASH_BACKEND_WORKFLOW\meddash backend workflow ver 2.0
-- **Product Manager Workspace:** c:\Users\email\.gemini\antigravity\CTO\Product Manager
-- **CMO Workspace:** c:\Users\email\.gemini\antigravity\CTO\CMO
+- **Product Manager Workspace:** c:\Users\email\.gemini\antigravity\CTO\Meddash-Product Manager
+- **CMO Workspace:** c:\Users\email\.gemini\antigravity\CTO\Meddash-CMO-GTM
 
 ---
 
 ## 🏢 Multi-Agent Hierarchy (CTO, Product Manager, CMO)
 We operate a specialized multi-agent architecture to reduce token bloat and compartmentalize roles:
 - **CTO (This Workspace):** The overarching orchestrator. Keeps the global context, maps the system architecture, and acts as the master node.
-- **Product Manager (`c:\Users\email\.gemini\antigravity\CTO\Product Manager`):** Focuses exclusively on KOL Briefs and Therapeutic Area Briefs. Open this folder in a dedicated VS Code window to isolate Product Management context.
-- **CMO (`c:\Users\email\.gemini\antigravity\CTO\CMO`):** Focuses exclusively on CRM management, market research for client reachout, and market penetration content. Open this folder in a dedicated VS Code window to isolate Marketing context.
+- **Product Manager (`c:\Users\email\.gemini\antigravity\CTO\Meddash-Product Manager`):** Focuses exclusively on KOL Briefs and Therapeutic Area Briefs. Open this folder in a dedicated VS Code window to isolate Product Management context.
+- **CMO (`c:\Users\email\.gemini\antigravity\CTO\Meddash-CMO-GTM`):** Focuses exclusively on CRM management, market research for client reachout, and market penetration content. Open this folder in a dedicated VS Code window to isolate Marketing context.
+- **UA Manager (`c:\Users\email\.gemini\antigravity\CTO\Meddash-UA-User App Manager`):** Dedicated to the creation of user apps, SaaS, APIs, and retail-based databases optimized for monetization. Saves outputs to `UA-manager_Meddash`.
 
 ### 🌐 Cross-Workspace Integrations
-- **Notion Knowledge Base & CRM:** The entire multi-agent hierarchy has an established MCP integration with our Notion workspace. This connects our offline codebase directly to cloud-based documentation and live workspace pages.
+- **Notion Knowledge Base & CRM:** The entire multi-agent hierarchy has an established MCP integration with our Notion workspace. This connects our offline codebase directly to cloud-based documentation and live workspace pages. 
+*(Note: The **Brainstorm** and **Tech Stack** pages in Notion are explicitly designated as **Common Use** across all agents for cross-pollinating ideas and architecture).*
 
 ---
 

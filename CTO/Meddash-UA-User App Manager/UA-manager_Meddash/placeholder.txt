@@ -1,0 +1,1 @@
+This folder is the dedicated output directory for the User App Manager's SaaS and retail app generation.
