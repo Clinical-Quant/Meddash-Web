@@ -45,6 +45,9 @@ We operate a specialized multi-agent architecture to reduce token bloat and comp
 - **Product Manager (`c:\Users\email\.gemini\antigravity\CTO\Product Manager`):** Focuses exclusively on KOL Briefs and Therapeutic Area Briefs. Open this folder in a dedicated VS Code window to isolate Product Management context.
 - **CMO (`c:\Users\email\.gemini\antigravity\CTO\CMO`):** Focuses exclusively on CRM management, market research for client reachout, and market penetration content. Open this folder in a dedicated VS Code window to isolate Marketing context.
 
+### 🌐 Cross-Workspace Integrations
+- **Notion Knowledge Base & CRM:** The entire multi-agent hierarchy has an established MCP integration with our Notion workspace. This connects our offline codebase directly to cloud-based documentation and live workspace pages.
+
 ---
 
 ## Archived Past Missions
