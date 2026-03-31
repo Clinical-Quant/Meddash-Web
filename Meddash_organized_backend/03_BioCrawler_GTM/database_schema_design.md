@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS biotech_leads (
     recent_funding_signal BOOLEAN DEFAULT 0, -- 1 if found in VC Portfolios / PR News
     active_hiring_signal BOOLEAN DEFAULT 0,  -- 1 if found hiring MSLs 
     tier TEXT,                           -- Calculated priority: 'A', 'B', or 'C'
+    ticker TEXT DEFAULT NULL,            -- Stock ticker for publicly traded leads
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- When this lead was first discovered
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- When this lead was last modified/enriched
 );
@@ -84,15 +85,15 @@ When BioCrawler attempts to save leads to the database, it will use an `INSERT .
 2. If the `company_slug` exists but new signals were found (e.g., VC funding discovered after the clinical trial was already tracked) -> **UPDATE** the signals and tier, and refresh `last_updated`.
 
 ```sql
-INSERT INTO biotech_leads (
     company_slug, company_name, primary_indication, trial_phases, 
     trial_nct_id, country, website_url, recent_funding_signal, 
-    active_hiring_signal, tier
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    active_hiring_signal, tier, ticker
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(company_slug) DO UPDATE SET 
     recent_funding_signal = excluded.recent_funding_signal,
     active_hiring_signal = excluded.active_hiring_signal,
     tier = excluded.tier,
+    ticker = COALESCE(excluded.ticker, biotech_leads.ticker),
     last_updated = CURRENT_TIMESTAMP;
 ```
 

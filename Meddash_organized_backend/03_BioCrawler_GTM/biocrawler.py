@@ -43,6 +43,7 @@ class BioCrawler:
                     recent_funding_signal BOOLEAN DEFAULT 0,
                     active_hiring_signal BOOLEAN DEFAULT 0,
                     tier TEXT,
+                    ticker TEXT DEFAULT NULL,
                     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -94,19 +95,20 @@ class BioCrawler:
                 INSERT INTO biotech_leads (
                     company_slug, company_name, primary_indication, trial_phases, 
                     trial_nct_id, country, website_url, recent_funding_signal, 
-                    active_hiring_signal, tier
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    active_hiring_signal, tier, ticker
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(company_slug) DO UPDATE SET 
                     recent_funding_signal = excluded.recent_funding_signal,
                     active_hiring_signal = excluded.active_hiring_signal,
                     website_url = excluded.website_url,
                     tier = excluded.tier,
+                    ticker = COALESCE(excluded.ticker, biotech_leads.ticker),
                     last_updated = CURRENT_TIMESTAMP
             ''', (
                 record['company_slug'], record['company_name'], record['primary_indication'],
                 record['trial_phases'], record['trial_nct_id'], record['country'],
                 record.get('website_url'), record['recent_funding_signal'],
-                record['active_hiring_signal'], record['tier']
+                record['active_hiring_signal'], record['tier'], record.get('ticker')
             ))
             conn.commit()
 
@@ -223,7 +225,8 @@ class BioCrawler:
                             "website_url": None,
                             "recent_funding_signal": False,
                             "active_hiring_signal": False,
-                            "tier": "C"
+                            "tier": "C",
+                            "ticker": None
                         }
                         self._upsert_lead(record)
                         total_leads_added += 1
@@ -312,7 +315,8 @@ class BioCrawler:
                 
             # Create a quick dictionary to look up companies by name
             # SEC names are often strictly formatted (e.g., "ACME ONCOLOGY INC.")
-            sec_companies = {v['title'].upper(): v['cik_str'] for k, v in sec_data.items()}
+            # Map: Title -> (CIK, Ticker)
+            sec_companies = {v['title'].upper(): (v['cik_str'], v['ticker']) for k, v in sec_data.items()}
             
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -324,17 +328,17 @@ class BioCrawler:
                     
                     # 2. Try to find an exact or partial match in the SEC database
                     match_found = False
-                    for sec_name, cik in sec_companies.items():
+                    for sec_name, (cik, ticker) in sec_companies.items():
                         if clean_name in sec_name or sec_name in clean_name:
                             match_found = True
-                            print(f"  [Funding Signal] SEC match found for {name} (CIK: {cik}). They are actively raising/filing.")
+                            print(f"  [Funding Signal] SEC match found for {name} (CIK: {cik}, Ticker: {ticker}). They are actively raising/filing.")
                             
-                            # Update our database to reflect that this company has financial momentum
+                            # Update our database to reflect that this company has financial momentum and store the ticker
                             cursor.execute('''
                                 UPDATE biotech_leads 
-                                SET recent_funding_signal = 1, last_updated = CURRENT_TIMESTAMP
+                                SET recent_funding_signal = 1, ticker = ?, last_updated = CURRENT_TIMESTAMP
                                 WHERE company_slug = ?
-                            ''', (slug,))
+                            ''', (ticker, slug))
                             break
                     
                     if not match_found:

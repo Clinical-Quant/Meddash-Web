@@ -58,23 +58,26 @@ def sync_websites_to_db():
         if index == 0:
             continue
             
-        # Column 0 is Company, Column 1 is Website  
-        if len(row) > 1:  
+        # Column 0 is Company, Column 1 is Website, Column 2 is Ticker
+        if len(row) > 2:  
             company = row[0].strip()
             website = row[1].strip()
+            ticker = row[2].strip()
 
         # If they entered a website and we have a company name
         if company and website:
             slug = generate_company_slug(company)
             
-            # Check if this slug exists in the DB with a missing or different website
-            cursor.execute("SELECT website_url FROM biotech_leads WHERE company_slug = ?", (slug,))
+            # Check if this slug exists in the DB with its current website and ticker
+            cursor.execute("SELECT website_url, ticker FROM biotech_leads WHERE company_slug = ?", (slug,))
             result = cursor.fetchone()
             
             if result:
                 db_website = result[0]
-                if db_website != website:
-                    # The Google Sheet has a new/different website. Update the DB!
+                db_ticker = result[1]
+                
+                # Update logic for website
+                if website and db_website != website:
                     try:
                         cursor.execute(
                             "UPDATE biotech_leads SET website_url = ?, last_updated = CURRENT_TIMESTAMP WHERE company_slug = ?",
@@ -83,7 +86,19 @@ def sync_websites_to_db():
                         updates_made += 1
                         print(f"Updated DB for {company}: Added website {website}")
                     except sqlite3.Error as e:
-                        print(f"Failed to update {company}: {e}")
+                        print(f"Failed to update website for {company}: {e}")
+                        
+                # Update logic for ticker
+                if ticker and db_ticker != ticker:
+                    try:
+                        cursor.execute(
+                            "UPDATE biotech_leads SET ticker = ?, last_updated = CURRENT_TIMESTAMP WHERE company_slug = ?",
+                            (ticker, slug)
+                        )
+                        updates_made += 1
+                        print(f"Updated DB for {company}: Added ticker {ticker}")
+                    except sqlite3.Error as e:
+                        print(f"Failed to update ticker for {company}: {e}")
             else:
                  print(f"Company {company} (slug: {slug}) found in Google Sheet but not in local database. Skipping.")
 

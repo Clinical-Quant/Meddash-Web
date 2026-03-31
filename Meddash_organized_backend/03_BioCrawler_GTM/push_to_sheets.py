@@ -39,6 +39,7 @@ def pull_daily_leads():
     SELECT 
         bl.company_name,
         bl.website_url,
+        bl.ticker,
         '' as contact,
         '' as role,
         '' as linkedin,
@@ -81,7 +82,7 @@ def push_to_sheets(client, leads):
         # Check headers
         headers = sheet.row_values(1)
         expected_headers = [
-            "company", "website", "contact", "role", "linkedin", "email", 
+            "company", "website", "ticker", "contact", "role", "linkedin", "email", 
             "contacted", "replied", "meeting", "sale", "notes",
             "first_contact_date", "exact_email", "next_followup_date", 
             "replies_sentiment_string", "kanban_stage"

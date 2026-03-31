@@ -24,6 +24,7 @@ To stay focused and keep the context window narrow, we operate with a strict hie
 4. On completion, the mission folder is moved to ARCHIVED_PAST_MISSIONS/ with a YYYY-MM-DD_HH-MM timestamp and this README is updated.
 5. Slash commands: /current mission loads the active mission README + files. /kol profiles (or any mission name) loads the relevant sub-files.
 6. **Codebase Backups**: Execute a daily `git commit` and `git push` inside the `Meddash_organized_backend` repository to strictly version-control our 7 operational subfolders and the `architecture_docs` mapping files.
+7. **Technical Logging**: Update the `c:\Users\email\.gemini\antigravity\CTO\CHIEF_CTO_WORKFLOW_TIMELINE_CONTEXT_LOG.md` file with a time and date stamp after every significant change (script updates, schema migrations, file path reorgs) to maintain a persistent master index of work.
 
 ---
 
