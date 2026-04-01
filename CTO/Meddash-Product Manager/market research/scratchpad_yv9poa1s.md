@@ -1,0 +1,20 @@
+## Findings
+- **Deliverables**:
+    - **Monocl ExpertInsight**: SaaS platform for deep KOL profiling (publications, trials, grants, conferences).
+    - **Monocl ExpertClaims**: Integration of medical claims data (patient volume, procedures, diagnoses).
+    - **Monocl ExpertData**: API/JSON integration for CRM (Salesforce, Veeva).
+    - **Monocl Conferences**: Tracking speaker activity and abstracts.
+    - **Monocl ExpertGO**: Mobile app for field teams (MSLs).
+- **KOL Profiles/Data Points**:
+    - **Scientific Activity**: Publications (PubMed/MEDLINE), clinical trials (global), research grants (NIH, etc.), patents, and conference abstracts.
+    - **Digital Influence**: Social media tracking (Twitter/X, LinkedIn) to identify Digital Opinion Leaders (DOLs).
+    - **Clinical Impact**: 2 Billion+ medical claims covering 330 million+ patient lives (US focused). Includes diagnosis/procedure codes and referral patterns.
+- **Ranking/Tiering**: AI/ML-driven ranking based on scientific activity, reach, digital influence, and clinical impact (via claims).
+- **Integrations**: Fully integrated with Veeva and Salesforce (ExpertConnect).
+- **Pricing/Subscription Model**:
+    - **SaaS Model**: Value-based pricing, typically 1-3 year non-cancellable contracts.
+    - **Estimated Cost**: ~$17,500 - $25,000/year for entry-level access; Enterprise deals often exceed $100,000 ARR.
+    - **Per-User**: Often tiered by number of users or therapeutic areas.
+- **Customer Sentiment**:
+    - **Pros**: Comprehensive global reach, strong claims data integration, user-friendly UI, mobile accessibility for MSLs.
+    - **Cons**: High cost ("silly expensive"), potential for stale data in less-active therapeutic areas, heavily US-centric clinical data.

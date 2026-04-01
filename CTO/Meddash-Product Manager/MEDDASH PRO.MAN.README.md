@@ -29,3 +29,8 @@ You are REQUIRED to maintain a persistent work log in this workspace:
 - **Rule:** Every significant change, brief update, or workflow pivot MUST be logged with an exact **Date and Time Stamp**. This is our audit trail for future scaling.
 
 ---
+
+## 5. Current Project State & Research Rules (REVISED 2026-04-01)
+- **Source of Truth:** All active research is now managed exclusively in **Notion**. Local scratchpads are for transient drafting only; the final synthesis MUST reside in the Notion workspace.
+- **Local Backups:** The original markdown research is archived in the `market research` subfolder for auditing and reference.
+- **Next Priority:** Proceeding to the **Product Design Phase** for the "Verified Outreach" feature integration.
