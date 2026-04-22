@@ -1,0 +1,127 @@
+{
+  "version": "1.0",
+  "created": "2026-04-21T05:40:00Z",
+  "last_updated": "2026-04-21T17:32:17.242593",
+  "projects": [
+    "MEDDASH-CQ"
+  ],
+  "nodes": {
+    "MEM_MEDDASH-CQ_20260421_061133": {
+      "id": "MEM_MEDDASH-CQ_20260421_061133",
+      "timestamp": "2026-04-21T06:11:33.799804",
+      "project": "MEDDASH-CQ",
+      "summary": "Built Graph Memory skill for Agent Zero - a unified memory mosaic that creates blockchain-like memory nodes across all agents. Designed for spatial awareness of work progress, file connections, and project state.",
+      "artifacts": {
+        "files": [
+          "/a0/usr/skills/graph-memory/SKILL.md",
+          "/a0/usr/skills/graph-memory/graph_memory.py",
+          "/a0/usr/Graph Memory/connection_graph.json",
+          "/a0/usr/Graph Memory/artifact_index.json",
+          "/a0/usr/Graph Memory/time_index.json"
+        ],
+        "scripts": [],
+        "chats": [
+          "/a0/usr/chats/vo1JOsCR/"
+        ]
+      },
+      "status": "active",
+      "next_action": "Test checkpoint commands and integrate with A0 memory system",
+      "blockers": [],
+      "connections": []
+    },
+    "MEM_MEDDASH-CQ_20260421_173217": {
+      "id": "MEM_MEDDASH-CQ_20260421_173217",
+      "timestamp": "2026-04-21T17:32:17.242593",
+      "project": "MEDDASH-CQ",
+      "summary": "Built complete Graph Memory skill with A2A cross-integration documentation. Created installable zip package (graph-memory-skill.zip) for public sharing. System provides spatial memory for multi-project management with blockchain-like memory nodes.",
+      "artifacts": {
+        "files": [
+          "/a0/usr/skills/graph-memory/SKILL.md",
+          "/a0/usr/skills/graph-memory/graph_memory.py",
+          "/a0/usr/skills/graph-memory/README.md",
+          "/a0/usr/skills/graph-memory/templates/connection_graph.json",
+          "/a0/usr/skills/graph-memory/templates/artifact_index.json",
+          "/a0/usr/skills/graph-memory/templates/time_index.json",
+          "/a0/usr/skills/graph-memory/templates/GraphMemory_Documentation.md",
+          "/a0/usr/skills/graph-memory-skill.zip",
+          "/a0/CTO/Graph Memory/GraphMemory_and_A2A_Documentation.md"
+        ],
+        "scripts": [],
+        "chats": [
+          "/a0/usr/chats/vo1JOsCR/"
+        ]
+      },
+      "status": "completed",
+      "next_action": "Test state commands and integrate with A0 memory system for semantic search",
+      "blockers": [],
+      "connections": [
+        {
+          "to": "MEM_MEDDASH-CQ_20260421_061133",
+          "relation": "continues"
+        }
+      ]
+    }
+  },
+  "index": {
+    "by_project": {
+      "MEDDASH-CQ": [
+        "MEM_MEDDASH-CQ_20260421_061133",
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ]
+    },
+    "by_artifact": {
+      "/a0/usr/skills/graph-memory/SKILL.md": [
+        "MEM_MEDDASH-CQ_20260421_061133",
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ],
+      "/a0/usr/skills/graph-memory/graph_memory.py": [
+        "MEM_MEDDASH-CQ_20260421_061133",
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ],
+      "/a0/usr/Graph Memory/connection_graph.json": [
+        "MEM_MEDDASH-CQ_20260421_061133"
+      ],
+      "/a0/usr/Graph Memory/artifact_index.json": [
+        "MEM_MEDDASH-CQ_20260421_061133"
+      ],
+      "/a0/usr/Graph Memory/time_index.json": [
+        "MEM_MEDDASH-CQ_20260421_061133"
+      ],
+      "/a0/usr/chats/vo1JOsCR/": [
+        "MEM_MEDDASH-CQ_20260421_061133",
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ],
+      "/a0/usr/skills/graph-memory/README.md": [
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ],
+      "/a0/usr/skills/graph-memory/templates/connection_graph.json": [
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ],
+      "/a0/usr/skills/graph-memory/templates/artifact_index.json": [
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ],
+      "/a0/usr/skills/graph-memory/templates/time_index.json": [
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ],
+      "/a0/usr/skills/graph-memory/templates/GraphMemory_Documentation.md": [
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ],
+      "/a0/usr/skills/graph-memory-skill.zip": [
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ],
+      "/a0/CTO/Graph Memory/GraphMemory_and_A2A_Documentation.md": [
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ]
+    },
+    "by_time": [
+      "MEM_MEDDASH-CQ_20260421_061133",
+      "MEM_MEDDASH-CQ_20260421_173217"
+    ]
+  },
+  "metadata": {
+    "description": "Graph Memory - Unified memory mosaic across all agents",
+    "schema_version": "1.0",
+    "ubiquitous": true,
+    "location_hint": "Relative to A0 instance: <project_root>/Graph Memory/ or <workdir>/Graph Memory/"
+  }
+}
