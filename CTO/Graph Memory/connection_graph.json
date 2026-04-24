@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created": "2026-04-21T05:40:00Z",
-  "last_updated": "2026-04-21T17:32:17.242593",
+  "last_updated": "2026-04-23T19:41:41.924244",
   "projects": [
     "MEDDASH-CQ"
   ],
@@ -59,6 +59,52 @@
           "to": "MEM_MEDDASH-CQ_20260421_061133",
           "relation": "continues"
         }
+      ]
+    },
+    "MEM_MEDDASH-CQ_20260423_190200": {
+      "id": "MEM_MEDDASH-CQ_20260423_190200",
+      "timestamp": "2026-04-23T19:03:11.378438",
+      "project": "MEDDASH-CQ",
+      "summary": "CQ Newsletter Market Research deep dive - 7 areas: data sources (16+ services documented in cq_research_group2.md and cq_research_group3.md), competitive landscape, pricing benchmarks. Discussed CRM/sales pipeline needs, A2A connection for Alfred Chief COO agent, Windows host access limitations (A0 CLI connector solution identified). Research NOT yet compiled into final document.",
+      "artifacts": {
+        "files": [
+          "/a0/usr/workdir/cq_research_group2.md",
+          "/a0/usr/workdir/cq_research_group3.md",
+          "/a0/CTO/Meddash-CQ Team files/Clinical_Quant_Auto_and_Paid_Content_Machine.md",
+          "/a0/CTO/CQ Skill Content Skill/"
+        ],
+        "scripts": [],
+        "chats": []
+      },
+      "status": "active",
+      "next_action": "Compile research into Clinical_Quant_Newsletter_Market_Research.md, then build CRM/sales pipeline in Notion or Supabase",
+      "blockers": [
+        "Cannot access Windows C: drive from Docker - need A0 CLI connector or Hermes agent"
+      ],
+      "connections": [
+        "MEM_MEDDASH-CQ_20260421_173217"
+      ]
+    },
+    "MEM_MEDDASH-CQ_20260423_154100": {
+      "id": "MEM_MEDDASH-CQ_20260423_154100",
+      "timestamp": "2026-04-23T19:41:41.916543",
+      "project": "MEDDASH-CQ",
+      "summary": "COMPLETED: Clinical Quant Newsletter Market Research document created. 267 lines covering all 7 research areas: data sources (16+ services), competitors (15 newsletters), style guides, market size ($450M TAM), pricing ($29-149/mo tiers), audience growth projections, and 3-phase launch plan. Document saved to CTO folder and ceo-files backup.",
+      "artifacts": {
+        "files": [
+          "/a0/CTO/CQ Skill Content Skill/Clinical_Quant_Newsletter_Market_Research.md",
+          "/a0/usr/ceo-files/Clinical_Quant_Newsletter_Market_Research.md",
+          "/a0/usr/workdir/cq_research_group2.md",
+          "/a0/usr/workdir/cq_research_group3.md"
+        ],
+        "scripts": [],
+        "chats": []
+      },
+      "status": "completed",
+      "next_action": "Build Newsletter Content Generator skill, set up Notion CRM, create first 3 articles",
+      "blockers": [],
+      "connections": [
+        "MEM_MEDDASH-CQ_20260423_190200"
       ]
     }
   },
