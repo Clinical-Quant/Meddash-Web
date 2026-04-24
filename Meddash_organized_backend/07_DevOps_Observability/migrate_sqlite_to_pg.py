@@ -40,11 +40,28 @@ for sqlite_db in db_paths:
         
         for table in tables:
             print(f"  -> Converting Schema & Injecting Table: [{table}]")
-            # Read from SQLite directly into a DataFrame
             df = pd.read_sql_query(f"SELECT * FROM \"{table}\"", sqlite_conn)
+            if df.empty:
+                continue
+                
+            from sqlalchemy import MetaData
+            from sqlalchemy.dialects.postgresql import insert
             
-            # Map native structure to PostgreSQL cloud schemas dynamically
-            df.to_sql(table, pg_engine, if_exists='replace', index=False)
+            # Ensure table schema exists
+            df.head(0).to_sql(table, pg_engine, if_exists='append', index=False)
+            
+            meta = MetaData()
+            meta.reflect(bind=pg_engine, only=[table])
+            target_table = meta.tables[table]
+            
+            rows = df.to_dict(orient='records')
+            
+            with pg_engine.begin() as pg_conn:
+                for i in range(0, len(rows), 1000):
+                    chunk = rows[i:i + 1000]
+                    stmt = insert(target_table).values(chunk)
+                    stmt = stmt.on_conflict_do_nothing()
+                    pg_conn.execute(stmt)
             
             print(f"     ✅ Successfully pushed {len(df)} rows.")
             

@@ -1,0 +1,35 @@
+name: Meddash Backend CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f Meddash_organized_backend/requirements.txt ]; then pip install -r Meddash_organized_backend/requirements.txt; fi
+
+    - name: Syntax check (py_compile)
+      run: |
+        python -m py_compile Meddash_organized_backend/*.py
+        python -m py_compile Meddash_organized_backend/01_KOL_Data_Engine/*.py
+        python -m py_compile Meddash_organized_backend/03_BioCrawler_GTM/*.py
+
+    - name: Verify critical imports
+      run: |
+        export PYTHONPATH=$PYTHONPATH:$(pwd)/Meddash_organized_backend
+        python -c "import api_server; print('API Server import successful')"

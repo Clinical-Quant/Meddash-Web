@@ -15,11 +15,15 @@ Run after load_sjr.py to populate weights.
 Usage: python kol_weight.py
 """
 
-import sqlite3
+import psycopg2
 import math
 import logging
+import os
+from dotenv import load_dotenv
 
-DB_FILE = r"C:\Users\email\.gemini\antigravity\Meddash_organized_backend\06_Shared_Datastores\meddash_kols.db"
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(base_dir, '.env'))
+SUPABASE_URI = os.getenv("SUPABASE_URI")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,23 +33,23 @@ logging.basicConfig(
 FALLBACK_SJR_WEIGHT = math.log(1 + 1.0 * 10)  # fallback SJR=1.0 → weight ≈ 2.398
 
 
-def ensure_apw_column(cursor: sqlite3.Cursor):
+def ensure_apw_column(cursor):
     """Add the author_publication_weight column to kols if it doesn't exist."""
     try:
         cursor.execute(
-            "ALTER TABLE kols ADD COLUMN author_publication_weight REAL DEFAULT 0.0"
+            "ALTER TABLE kols ADD COLUMN IF NOT EXISTS author_publication_weight REAL DEFAULT 0.0"
         )
-        logging.info("Added 'author_publication_weight' column to kols table.")
-    except sqlite3.OperationalError:
-        pass  # Column already exists
+        logging.info("Ensured 'author_publication_weight' column exists in kols table.")
+    except Exception as e:
+        pass  # Catch errors if supported syntax varies
 
 
-def compute_all_weights(db_path: str):
+def compute_all_weights():
     """
     For every KOL, sums the sjr_weight of each journal they published in,
     applies the outer log formula, and stores the result in kols.author_publication_weight.
     """
-    conn = sqlite3.connect(db_path)
+    conn = psycopg2.connect(SUPABASE_URI)
     cursor = conn.cursor()
 
     ensure_apw_column(cursor)
@@ -67,7 +71,7 @@ def compute_all_weights(db_path: str):
             FROM kol_authorships ka
             JOIN publications p ON ka.publication_id = p.id
             LEFT JOIN journal_metrics jm ON p.issn = jm.issn
-            WHERE ka.kol_id = ?
+            WHERE ka.kol_id = %s
         """, (kol_id,))
         rows = cursor.fetchall()
 
@@ -88,7 +92,7 @@ def compute_all_weights(db_path: str):
         apw = round(math.log(1 + cumulative_sjr_weight), 4)
 
         cursor.execute(
-            "UPDATE kols SET author_publication_weight = ? WHERE id = ?",
+            "UPDATE kols SET author_publication_weight = %s WHERE id = %s",
             (apw, kol_id)
         )
         updated += 1
@@ -98,9 +102,9 @@ def compute_all_weights(db_path: str):
     logging.info(f"Author Publication Weight computed and stored for {updated} KOLs.")
 
 
-def show_top_kols(db_path: str, n: int = 10):
+def show_top_kols(n: int = 10):
     """Quick preview: print top N KOLs by publication weight."""
-    conn = sqlite3.connect(db_path)
+    conn = psycopg2.connect(SUPABASE_URI)
     cursor = conn.cursor()
     cursor.execute("""
         SELECT first_name, last_name, author_publication_weight,
@@ -108,7 +112,7 @@ def show_top_kols(db_path: str, n: int = 10):
         FROM kols
         WHERE author_publication_weight > 0
         ORDER BY author_publication_weight DESC
-        LIMIT ?
+        LIMIT %s
     """, (n,))
     rows = cursor.fetchall()
     conn.close()
@@ -125,6 +129,6 @@ def show_top_kols(db_path: str, n: int = 10):
 
 if __name__ == "__main__":
     logging.info("=== KOL Publication Weight Computation Starting ===")
-    compute_all_weights(DB_FILE)
-    show_top_kols(DB_FILE, n=10)
+    compute_all_weights()
+    show_top_kols(n=10)
     logging.info("=== Weight Computation Complete ===")

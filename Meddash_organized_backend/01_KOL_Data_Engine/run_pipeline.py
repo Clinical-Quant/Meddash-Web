@@ -15,9 +15,8 @@ except ImportError:
 
 from extract_publications import fetch_recent_publications
 from db_ingestion import initialize_database, ingest_publications_from_json
-# temporarily disable legacy disambiguator until upgraded to pull_id sandbox
-# from kol_disambiguator import run_disambiguation
-# from kol_weight import compute_all_weights
+from kol_disambiguator import run_disambiguation
+from kol_weight import compute_all_weights
 
 # Configure logging
 LOG_FILE = "meddash_pipeline.log"
@@ -63,6 +62,12 @@ def run_nightly_pipeline(target_diseases: list, pull_id: str = None, max_results
             
             if os.path.exists(temp_json):
                 os.remove(temp_json)
+        
+        logging.info("Phase 3: Running Disambiguation")
+        run_disambiguation(pull_id=pull_id)
+        
+        logging.info("Phase 4: Computing Publication Weights")
+        compute_all_weights()
         
         logging.info("Nightly pipeline completed structurally successfully.")
         

@@ -1,0 +1,208 @@
+{
+  "main": {
+    "id": "13c296923b58336e",
+    "type": "split",
+    "children": [
+      {
+        "id": "c171ccb5cd250396",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "47d76b4eea755aca",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "e1cf00b7eab1116a",
+    "type": "split",
+    "children": [
+      {
+        "id": "4af6ed6d0f78985f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "ad6ad46f98a62edc",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "0147b5e00441c254",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "5c06099157956de9",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "right": {
+    "id": "1abeec7a2fbb0727",
+    "type": "split",
+    "children": [
+      {
+        "id": "b421f7c9b61d81b6",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6988945813f6fd2a",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "e753a37e7c211b63",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "807962c2936d7fc7",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "0dda3a63f9c617f8",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "b099d305101f20e3",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false,
+      "audio-recorder:Start/stop recording": false,
+      "zk-prefixer:Create new unique note": false,
+      "workspaces:Manage workspace layouts": false
+    }
+  },
+  "active": "47d76b4eea755aca",
+  "lastOpenFiles": [
+    "CEO Notes/2026-04-24.md",
+    "CTO/CQ_Team/CEO Notes/2026-04-24.md",
+    "CTO/CQ_Team/2026-04-24.md",
+    "CTO/CQ_Team/CEO Notes",
+    "CTO/CQ_Team/Untitled",
+    "Meddash Future Upgrades/QA Reports/Issue 6 - API Server SQL Injection Partial Fix.md",
+    "Meddash Future Upgrades/QA Reports/Meddash CTO Walkthrough - QA Verification.md",
+    "Meddash Future Upgrades/QA Reports",
+    "CEO Notes",
+    "Untitled.canvas",
+    "meddash-frontend/node_modules/esrecurse/README.md",
+    "Meddash Group CTO and QA Plans and Work/QA Reports/Issue 5 - CQ Ticker Fuzzy Matching Fix.md",
+    "Meddash Future Upgrades/Meddash Future Upgrades - Home.md",
+    "CTO/CQ_Team/Group CTO-QA Plans and Archives",
+    "Meddash Future Upgrades/Cross-Team Coordination/Cross-Team Coordination Log.md",
+    "Meddash Future Upgrades/Cross-Team Coordination",
+    "Meddash Future Upgrades/Architecture Decisions/MEDDASH-CQ Architecture Decision Log.md",
+    "Meddash Future Upgrades/Architecture Decisions",
+    "Meddash Future Upgrades/Implementation Plans/Meddash CTO Implementation Plan - QA Review.md",
+    "Meddash Future Upgrades/Implementation Plans",
+    "Meddash Future Upgrades",
+    "Meddash Group CTO and QA Plans and Work/Cross-Team Coordination"
+  ]
+}

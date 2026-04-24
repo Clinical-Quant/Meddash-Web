@@ -20,8 +20,9 @@ Run once manually, then include in the annual cron refresh.
 Usage: python load_sjr.py
 """
 
-import sqlite3
+import psycopg2
 import os
+from dotenv import load_dotenv
 import re
 import csv
 import math
@@ -30,7 +31,10 @@ import urllib.request
 from datetime import date
 
 # ── Config ────────────────────────────────────────────────────────────────────
-DB_FILE  = r"C:\Users\email\.gemini\antigravity\Meddash_organized_backend\06_Shared_Datastores\meddash_kols.db"
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(base_dir, '.env'))
+SUPABASE_URI = os.getenv("SUPABASE_URI")
+
 SJR_URL  = "https://www.scimagojr.com/journalrank.php?out=xls"   # Returns semicolon-delimited CSV
 SJR_FILE = "sjr_raw.csv"
 LOG_FILE = "load_sjr.log"
@@ -66,9 +70,9 @@ def sjr_to_weight(sjr: float) -> float:
     return round(math.log(1 + sjr * 10), 4)
 
 
-def ensure_journal_table(cursor: sqlite3.Cursor):
+def ensure_journal_table(cursor):
     """Creates the journal_metrics table if it doesn't already exist."""
-    cursor.executescript("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS journal_metrics (
             issn                VARCHAR(9) PRIMARY KEY,  -- e.g. '1546-170X' — joins to publications.issn
             issn_print          VARCHAR(9),              -- secondary ISSN where available
@@ -118,9 +122,9 @@ def download_sjr(url: str, dest: str) -> bool:
 
 # ── Import ────────────────────────────────────────────────────────────────────
 
-def import_sjr_to_db(csv_path: str, db_path: str):
+def import_sjr_to_db(csv_path: str):
     """Parses the SCImago CSV and upserts every journal into journal_metrics."""
-    conn = sqlite3.connect(db_path)
+    conn = psycopg2.connect(SUPABASE_URI)
     cursor = conn.cursor()
     ensure_journal_table(cursor)
     conn.commit()
@@ -187,7 +191,7 @@ def import_sjr_to_db(csv_path: str, db_path: str):
             cursor.execute("""
                 INSERT INTO journal_metrics
                     (issn, issn_print, journal_name, sjr, sjr_weight, h_index, total_docs, subject_area, publisher, last_updated)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT(issn) DO UPDATE SET
                     journal_name = excluded.journal_name,
                     sjr          = excluded.sjr,
@@ -213,5 +217,5 @@ if __name__ == "__main__":
     if not file_ready:
         logging.error("Cannot proceed: sjr_raw.csv not found. Follow the MANUAL ACTION instructions above.")
     else:
-        import_sjr_to_db(SJR_FILE, DB_FILE)
+        import_sjr_to_db(SJR_FILE)
         logging.info("=== SJR Import Pipeline Complete ===")

@@ -1,8 +1,15 @@
 import sqlite3
+import psycopg2
+import psycopg2.extras
 import pandas as pd
 from datetime import datetime
 import os
 import argparse
+from dotenv import load_dotenv
+
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(base_dir, '.env'))
+SUPABASE_URI = os.getenv("SUPABASE_URI")
 
 class BioCrawlerMeddashBridge:
     def __init__(self, biocrawler_db_path=r"C:\Users\email\.gemini\antigravity\Meddash_organized_backend\06_Shared_Datastores\biocrawler_leads.db", meddash_db_path=r"C:\Users\email\.gemini\antigravity\Meddash_organized_backend\06_Shared_Datastores\meddash_kols.db"):
@@ -41,35 +48,46 @@ class BioCrawlerMeddashBridge:
 
     def score_kols_for_indication(self, indication):
         """
-        Step 2: Connect to Meddash and run the proprietary SVS math.
-        (This mimics the core Meddash 'run_pipeline.py' logic for the specific disease).
+        Step 2: Connect to Meddash (PG) and run the proprietary SVS math.
+        (This fetches the real top KOLs for the given indication based on their author_publication_weight).
         """
         try:
-            # We must connect to the core Meddash database here.
-            # (Assuming standard schema based on the Meddash architecture we've discussed).
-            with sqlite3.connect(self.meddash_db) as conn:
+            conn = psycopg2.connect(SUPABASE_URI)
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            
+            print(f"  -> Running Meddash SVS scoring on indication: {indication}")
+            
+            query = """
+                SELECT 
+                    k.first_name, 
+                    k.last_name, 
+                    k.institution, 
+                    k.author_publication_weight AS svs_score
+                FROM kols k
+                JOIN kol_authorships ka ON k.id = ka.kol_id
+                JOIN publications p ON ka.publication_id = p.id
+                WHERE p.title ILIKE %s OR p.abstract ILIKE %s
+                GROUP BY k.id
+                ORDER BY k.author_publication_weight DESC
+                LIMIT 3
+            """
+            search_term = f"%%{indication}%%"
+            cursor.execute(query, (search_term, search_term))
+            rows = cursor.fetchall()
+            conn.close()
+            
+            if not rows:
+                print(f"  -> No real KOLs found for {indication}, skipping.")
+                return []
                 
-                # We simulate the SVS math query here. In production, this would call
-                # the Meddash SVS Pandas logic directly. We look for KOLs tagged with
-                # the target indication (or MeSH child term).
-                query = f"""
-                    SELECT 
-                        k.first_name, k.last_name, k.institution, 
-                        (pm.is_major_topic * 5 + 10) AS simulated_svs_score
-                    FROM associated_kols k
-                    -- Mocking the join to the publications map based on indication
-                    LIMIT 3
-                """
-                # For this MVP implementation script before Meddash is fully populated, 
-                # we'll return a static list of "Rising Stars" to test the handoff format.
-                
-                print(f"  -> Running Meddash SVS scoring on indication: {indication}")
-                mock_rising_stars = [
-                    {"name": "Dr. Sarah Chen", "institution": "Dana-Farber", "svs_score": 88.5},
-                    {"name": "Dr. Marcus Vance", "institution": "MD Anderson", "svs_score": 82.1},
-                    {"name": "Dr. Elena Rostova", "institution": "Memorial Sloan Kettering", "svs_score": 79.4}
-                ]
-                return mock_rising_stars
+            real_stars = []
+            for r in rows:
+                real_stars.append({
+                    "name": f"{r['first_name']} {r['last_name']}",
+                    "institution": r['institution'] or "Unknown Institution",
+                    "svs_score": round(r['svs_score'] or 0.0, 2)
+                })
+            return real_stars
                 
         except Exception as e:
              print(f"Error running Meddash SVS Pipeline: {e}")

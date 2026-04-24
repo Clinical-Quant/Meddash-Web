@@ -1,7 +1,7 @@
 import os
 import subprocess
 import threading
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, text
 import pandas as pd
@@ -14,10 +14,17 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(base_dir, '.env'))
 SUPABASE_URI = os.getenv("SUPABASE_URI")
 
+API_KEY = os.getenv("API_KEY", "meddash-secret-key")
+
+def verify_api_key(x_api_key: str = Header(None)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+
 app = FastAPI(
     title="Meddash Sidecar API",
     description="Bridge connecting the Meddash Next.js Frontend to the Python Backend and PostgreSQL databases.",
-    version="2.0.0"
+    version="2.0.0",
+    dependencies=[Depends(verify_api_key)]
 )
 
 app.add_middleware(
@@ -81,12 +88,14 @@ def get_kols(limit: int = 150, search: str = None):
     FROM kols k
     LEFT JOIN kol_scholar_metrics s ON k.id::text = s.kol_id::text
     """
+    params = {"limit": limit}
     if search:
-        query += f" WHERE k.first_name ILIKE '%%{search}%%' OR k.last_name ILIKE '%%{search}%%'"
-    query += f" ORDER BY k.author_publication_weight DESC NULLS LAST LIMIT {limit}"
+        query += " WHERE k.first_name ILIKE :search OR k.last_name ILIKE :search"
+        params["search"] = f"%{search}%"
+    query += " ORDER BY k.author_publication_weight DESC NULLS LAST LIMIT :limit"
     
     try:
-        df = pd.read_sql(query, pg_engine)
+        df = pd.read_sql(text(query), pg_engine, params=params)
         df = df.fillna(0)
         return {"data": df.to_dict(orient="records")}
     except Exception as e:
@@ -96,9 +105,10 @@ def get_kols(limit: int = 150, search: str = None):
 def get_trials(limit: int = 150):
     if not pg_engine:
         raise HTTPException(status_code=500, detail="Database Engine Offline.")
-    query = f"SELECT nct_id, brief_title, phase, overall_status FROM trials LIMIT {limit}"
+    query = text("SELECT nct_id, brief_title, phase, overall_status FROM trials LIMIT :limit")
+    params = {"limit": limit}
     try:
-        df = pd.read_sql(query, pg_engine)
+        df = pd.read_sql(query, pg_engine, params=params)
         df = df.fillna("Unknown")
         return {"data": df.to_dict(orient="records")}
     except Exception as e:
@@ -108,9 +118,10 @@ def get_trials(limit: int = 150):
 def get_leads(limit: int = 150):
     if not pg_engine:
         raise HTTPException(status_code=500, detail="Database Engine Offline.")
-    query = f"SELECT company_name, primary_indication, trial_phases, tier, website_url FROM biotech_leads ORDER BY tier DESC NULLS LAST LIMIT {limit}"
+    query = text("SELECT company_name, primary_indication, trial_phases, tier, website_url FROM biotech_leads ORDER BY tier DESC NULLS LAST LIMIT :limit")
+    params = {"limit": limit}
     try:
-        df = pd.read_sql(query, pg_engine)
+        df = pd.read_sql(query, pg_engine, params=params)
         df = df.fillna(0)
         return {"data": df.to_dict(orient="records")}
     except Exception as e:
@@ -304,7 +315,7 @@ def get_sandbox_kols(pull_id: str):
     if not pull_id:
         raise HTTPException(status_code=400, detail="pull_id is required.")
         
-    query = f"""
+    query = text("""
     SELECT 
         id AS kol_id, 
         first_name || ' ' || last_name AS name, 
@@ -312,10 +323,11 @@ def get_sandbox_kols(pull_id: str):
         institution,
         verification_status
     FROM kols_staging
-    WHERE '{pull_id}' = ANY(string_to_array(pull_id, ','))
-    """
+    WHERE :pull = ANY(string_to_array(pull_id, ','))
+    """)
+    params = {"pull": pull_id}
     try:
-        df = pd.read_sql(query, pg_engine)
+        df = pd.read_sql(query, pg_engine, params=params)
         # Sanitize NaN/None values to prevent JSON serialization crashes
         df = df.fillna("")
         return {"data": df.to_dict(orient="records")}
@@ -424,13 +436,14 @@ def export_sandbox(pull_id: str):
     if not pg_engine:
         raise HTTPException(status_code=500, detail="Database Engine Offline.")
     
-    query = f"""
+    query = text("""
     SELECT first_name, last_name, institution, specialty, verification_status
     FROM kols_staging
-    WHERE '{pull_id}' = ANY(string_to_array(pull_id, ','))
-    """
+    WHERE :pull = ANY(string_to_array(pull_id, ','))
+    """)
+    params = {"pull": pull_id}
     try:
-        df = pd.read_sql(query, pg_engine)
+        df = pd.read_sql(query, pg_engine, params=params)
         report_text = f"=== CAMPAIGN SANDBOX EXPORT: {pull_id} ===\n\n"
         report_text += f"Total Records: {len(df)}\n\n"
         for _, row in df.iterrows():
