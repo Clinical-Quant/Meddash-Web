@@ -1,0 +1,117 @@
+/* MEDDASH-CQ Factory Dashboard — Custom Styles */
+
+/* ── Global ── */
+.stApp { background-color: #0e1117; }
+
+/* ── Pulse indicators ── */
+.pulse-green {
+    animation: pulse-green-anim 2s infinite;
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #00e676;
+    margin-right: 6px;
+}
+.pulse-yellow {
+    animation: pulse-yellow-anim 2s infinite;
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #ffeb3b;
+    margin-right: 6px;
+}
+.pulse-red {
+    animation: pulse-red-anim 1s infinite;
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #f44336;
+    margin-right: 6px;
+}
+.pulse-grey {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #555;
+    margin-right: 6px;
+}
+
+@keyframes pulse-green-anim {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,230,118,0.7); }
+    50% { box-shadow: 0 0 12px 4px rgba(0,230,118,0.4); }
+}
+@keyframes pulse-yellow-anim {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,235,59,0.7); }
+    50% { box-shadow: 0 0 8px 3px rgba(255,235,59,0.3); }
+}
+@keyframes pulse-red-anim {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(244,67,54,0.7); }
+    50% { box-shadow: 0 0 14px 5px rgba(244,67,54,0.5); }
+}
+
+/* ── Pipeline flow arrows (Streamlit-compatible) ── */
+.flow-arrow {
+    text-align: center;
+    font-size: 28px;
+    color: #4fc3f7;
+    animation: flow-pulse 1.5s ease-in-out infinite;
+}
+@keyframes flow-pulse {
+    0%, 100% { opacity: 0.4; transform: translateX(-2px); }
+    50% { opacity: 1.0; transform: translateX(2px); }
+}
+
+/* ── Department headers ── */
+.meddash-header {
+    border-left: 4px solid #42a5f5;
+    padding-left: 12px;
+    margin-bottom: 8px;
+}
+.cq-header {
+    border-left: 4px solid #66bb6a;
+    padding-left: 12px;
+    margin-bottom: 8px;
+}
+
+/* ── Metric delta styling ── */
+.delta-positive { color: #00e676; font-size: 0.85em; }
+.delta-negative { color: #f44336; font-size: 0.85em; }
+.delta-neutral { color: #888; font-size: 0.85em; }
+
+/* ── Card styling ── */
+.data-card {
+    background: linear-gradient(135deg, #1a1d23 0%, #1e2228 100%);
+    border: 1px solid #2a2e35;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.data-card h4 { margin: 0 0 8px 0; color: #e0e0e0; }
+
+/* ── Funnel bar ── */
+.funnel-stage {
+    display: flex;
+    align-items: center;
+    margin: 4px 0;
+    gap: 8px;
+}
+.funnel-label { width: 120px; font-size: 0.85em; color: #bbb; }
+.funnel-bar-bg { flex: 1; height: 20px; background: #1e2228; border-radius: 4px; overflow: hidden; }
+.funnel-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+.funnel-count { width: 60px; text-align: right; font-size: 0.85em; color: #e0e0e0; font-weight: bold; }
+
+/* ── Factory output card ── */
+.output-zero {
+    background: linear-gradient(135deg, #3e2723 0%, #4e342e 100%);
+    border: 2px solid #f44336;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+}
+.output-producing {
+    background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+    border: 2px solid #00e676;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+}

@@ -11,10 +11,14 @@
             "id": "47d76b4eea755aca",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "CEO Notes/2026-04-24 - Alfred Chief Response.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "2026-04-24 - Alfred Chief Response"
             }
           }
         ]
@@ -74,8 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "1abeec7a2fbb0727",
@@ -91,6 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "CEO Notes/2026-04-24 - Alfred Chief Response.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -100,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks"
+              "title": "Backlinks for 2026-04-24 - Alfred Chief Response"
             }
           },
           {
@@ -109,11 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "CEO Notes/2026-04-24 - Alfred Chief Response.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links"
+              "title": "Outgoing links from 2026-04-24 - Alfred Chief Response"
             }
           },
           {
@@ -151,12 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "CEO Notes/2026-04-24 - Alfred Chief Response.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of 2026-04-24 - Alfred Chief Response"
             }
           }
         ]
@@ -182,27 +188,52 @@
   },
   "active": "47d76b4eea755aca",
   "lastOpenFiles": [
+    "Meddash_organized_backend/06_Shared_Datastores/ct_trials.db-shm",
+    "Meddash_organized_backend/06_Shared_Datastores/ct_trials.db-wal",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/__pycache__/deprecation.cpython-312.pyc",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/__pycache__/typing_extensions.cpython-312.pyc",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/__pycache__/six.cpython-312.pyc",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/__pycache__",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/zstandard-0.25.0.dist-info/licenses/LICENSE",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/zstandard-0.25.0.dist-info/top_level.txt",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/zstandard-0.25.0.dist-info/WHEEL",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/zstandard-0.25.0.dist-info/RECORD",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/zstandard-0.25.0.dist-info/INSTALLER",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/pyparsing/ai/best_practices.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/numpy-2.4.4.dist-info/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/numpy-2.4.4.dist-info/licenses/numpy/random/src/splitmix64/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/numpy-2.4.4.dist-info/licenses/numpy/random/src/distributions/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/numpy-2.4.4.dist-info/licenses/numpy/random/src/sfc64/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/numpy-2.4.4.dist-info/licenses/numpy/random/src/philox/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/numpy-2.4.4.dist-info/licenses/numpy/random/src/pcg64/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/numpy-2.4.4.dist-info/licenses/numpy/random/src/mt19937/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/numpy-2.4.4.dist-info/licenses/numpy/fft/pocketfft/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/numpy-2.4.4.dist-info/licenses/numpy/random/LICENSE.md",
+    "Meddash Group CTO and QA Plans and Work/Dashboard Building Plan Final.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/idna-3.13.dist-info/licenses/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/httpx-0.28.1.dist-info/licenses/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/httpcore-1.0.9.dist-info/licenses/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/streamlit/static/static/media/snowflake.JU2jBHL8.svg",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/streamlit/static/static/media/flake-1.B2r5AHMK.png",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/streamlit/static/static/media/flake-2.BnWSExPC.png",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/streamlit/static/static/media/flake-0.DgWaVvm5.png",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/streamlit/static/static/media/fireworks.B4d-_KUe.gif",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/streamlit/static/static/media/balloon-5.CSwkUfRA.png",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/streamlit/static/static/media/balloon-4.mbtFrzxf.png",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/streamlit/static/static/media/balloon-3.CgSk4tbL.png",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/streamlit/static/static/media/balloon-2.DTvC6B1t.png",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/streamlit/static/static/media/balloon-1.CNvFFrND.png",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/_plotly_utils/README.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/plotly/figure_factory/README.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/numpy/random/LICENSE.md",
+    "CTO/Meddash-CQ_Dashboard/venv/lib/python3.12/site-packages/pyarrow/tests/data/orc/README.md",
+    "CEO Notes/2026-04-24 - Plan 1 Ideated.md",
     "CEO Notes/2026-04-24.md",
-    "CTO/CQ_Team/CEO Notes/2026-04-24.md",
-    "CTO/CQ_Team/2026-04-24.md",
-    "CTO/CQ_Team/CEO Notes",
-    "CTO/CQ_Team/Untitled",
-    "Meddash Future Upgrades/QA Reports/Issue 6 - API Server SQL Injection Partial Fix.md",
-    "Meddash Future Upgrades/QA Reports/Meddash CTO Walkthrough - QA Verification.md",
-    "Meddash Future Upgrades/QA Reports",
-    "CEO Notes",
-    "Untitled.canvas",
-    "meddash-frontend/node_modules/esrecurse/README.md",
-    "Meddash Group CTO and QA Plans and Work/QA Reports/Issue 5 - CQ Ticker Fuzzy Matching Fix.md",
-    "Meddash Future Upgrades/Meddash Future Upgrades - Home.md",
-    "CTO/CQ_Team/Group CTO-QA Plans and Archives",
-    "Meddash Future Upgrades/Cross-Team Coordination/Cross-Team Coordination Log.md",
-    "Meddash Future Upgrades/Cross-Team Coordination",
-    "Meddash Future Upgrades/Architecture Decisions/MEDDASH-CQ Architecture Decision Log.md",
-    "Meddash Future Upgrades/Architecture Decisions",
-    "Meddash Future Upgrades/Implementation Plans/Meddash CTO Implementation Plan - QA Review.md",
-    "Meddash Future Upgrades/Implementation Plans",
-    "Meddash Future Upgrades",
-    "Meddash Group CTO and QA Plans and Work/Cross-Team Coordination"
+    "CTO/CQ_Team/CEO Notes/2026-04-24 - Alfred Chief Response.md",
+    "CEO Notes/2026-04-24 - Alfred Chief Response.md",
+    "CTO/CQ_Team/Group CTO-QA Plans and Archives/CQ Team - Group CTO-QA Home.md",
+    "Meddash Group CTO and QA Plans and Work/QA Reports/Meddash CTO Walkthrough - QA Verification.md",
+    "Meddash Group CTO and QA Plans and Work/QA Reports/Issue 6 - API Server SQL Injection Partial Fix.md",
+    "Untitled.canvas"
   ]
 }
