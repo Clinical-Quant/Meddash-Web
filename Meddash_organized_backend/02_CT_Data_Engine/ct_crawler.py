@@ -35,10 +35,15 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 import sys
 
-# Import the centralized DevOps notifier
-sys.path.append(r"C:\Users\email\.gemini\antigravity\Meddash_organized_backend\07_DevOps_Observability")
+# ── Path resolution via shared DevOps module ──────────────────────────────
+DEVOPS_DIR = Path(__file__).resolve().parent.parent / "07_DevOps_Observability"
+sys.path.insert(0, str(DEVOPS_DIR))
+ENGINE_DIR = Path(__file__).resolve().parent  # For local imports
+
+from paths import DB_PATHS, SUMMARY_DIR, STATE_DIR, ENGINE_PATHS
 try:
     import telegram_notifier
 except ImportError:
@@ -47,8 +52,8 @@ except ImportError:
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 BASE_URL    = "https://clinicaltrials.gov/api/v2/studies"
-RAW_DIR     = "ct_raw_json"
-STATE_FILE  = "ct_crawl_state.json"
+RAW_DIR     = str(ENGINE_DIR / "ct_raw_json")  # MDP3-SWIP1: cross-platform path
+STATE_FILE  = str(STATE_DIR / "ct_crawl_state.json")  # MDP3-SWIP1: shared state dir
 PAGE_SIZE   = 100          # Max allowed by CT.gov API v2
 REQUEST_DELAY_MS = 100     # Polite delay between requests (ms)
 MAX_RETRIES = 5            # For 429/503 backoff
@@ -82,7 +87,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("ct_crawler.log", encoding="utf-8"),
+        logging.FileHandler(str(ENGINE_DIR / "ct_crawler.log"), encoding="utf-8"),
     ]
 )
 log = logging.getLogger(__name__)
@@ -332,6 +337,9 @@ def main() -> None:
     parser.add_argument("--statuses", type=str, default="")
     parser.add_argument("--date_from", type=str, default="")
     parser.add_argument("--date_to", type=str, default="")
+    # MDP3-SWIP1: Campaign tracking
+    parser.add_argument("--pull-id", type=str, default=None,
+        help="Campaign Sandbox Pull ID for tracking")
     
     args = parser.parse_args()
 
@@ -391,15 +399,48 @@ def main() -> None:
         print(f"  Trials saved: {result['saved']:,}")
         print(f"  Skipped:      {result['skipped']:,}")
         print(f"  Pages fetched:{result['pages']:,}")
+        # ── MDP3-SWIP1: Write structured JSON summary ─────────────────────────
+        SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
+        summary = {
+            "engine": "ct_data",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "mode": args.mode,
+            "query": args.query if args.mode == "query" else None,
+            "hours": args.hours if args.mode == "delta" else None,
+            "status": "success",
+            "trials_saved": result["saved"],
+            "trials_skipped": result["skipped"],
+            "pages_fetched": result["pages"],
+            "duration_seconds": round(elapsed, 2),
+        }
+        summary_path = SUMMARY_DIR / "ct_crawler_summary.json"
+        with open(summary_path, "w") as f:
+            json.dump(summary, f, indent=2)
+        log.info(f"CT Crawler summary written to {summary_path}")
+
         print(f"\n  Next step: python ct_ingestion.py\n")
 
         if telegram_notifier:
-            telegram_notifier.send_alert(f"CT Crawler Complete%0A%0AMode: {args.mode.upper()}%0ASaved: {result['saved']:,} trials%0ATime: {minutes}m {seconds}s", level="success")
+            telegram_notifier.send_alert(f"CT Crawler Complete\n\nMode: {args.mode.upper()}\nSaved: {result['saved']:,} trials\nTime: {minutes}m {seconds}s", level="success")
 
     except Exception as e:
         log.error(f"CT Crawler crashed: {e}")
+        # MDP3-SWIP1: Write failure summary JSON
+        try:
+            SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
+            fail_summary = {
+                "engine": "ct_data",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "mode": args.mode if hasattr(args, "mode") else "unknown",
+                "status": "failure",
+                "error": str(e),
+            }
+            with open(SUMMARY_DIR / "ct_crawler_summary.json", "w") as f:
+                json.dump(fail_summary, f, indent=2)
+        except Exception:
+            pass
         if telegram_notifier:
-            telegram_notifier.send_alert(f"CT CRAWLER CRASHED%0A%0AMode: {args.mode.upper()}%0AError: {str(e)}", level="error")
+            telegram_notifier.send_alert(f"CT CRAWLER CRASHED\n\nMode: {args.mode.upper()}\nError: {str(e)[:200]}", level="error")
         raise
 
 

@@ -11,8 +11,12 @@ from datetime import datetime
 import sys
 import os
 
-# Import the centralized DevOps notifier
-sys.path.append(r"C:\Users\email\.gemini\antigravity\Meddash_organized_backend\07_DevOps_Observability")
+# ── Path resolution via shared DevOps module (MDP3-SWIP1) ──────────────────
+from pathlib import Path
+DEVOPS_DIR = Path(__file__).resolve().parent.parent / "07_DevOps_Observability"
+sys.path.insert(0, str(DEVOPS_DIR))
+
+from paths import DB_PATHS, SUMMARY_DIR, ENGINE_PATHS
 try:
     import telegram_notifier
 except ImportError:
@@ -21,8 +25,8 @@ except ImportError:
 VERSION = "1.4.0"
 
 class BioCrawler:
-    def __init__(self, db_path=r"C:\Users\email\.gemini\antigravity\Meddash_organized_backend\06_Shared_Datastores\biocrawler_leads.db"):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        self.db_path = db_path or str(DB_PATHS["biocrawler"])
         # ClinicalTrials.gov API v2 base URL
         self.ct_api_url = "https://clinicaltrials.gov/api/v2/studies"
         self._init_db()
@@ -463,6 +467,7 @@ class BioCrawler:
             total = cursor.fetchone()[0]
             print(f"Database sync complete. Total leads securely tracked natively: {total}")
 
+import logging
 import traceback
 
 if __name__ == "__main__":
@@ -475,15 +480,17 @@ if __name__ == "__main__":
     parser.add_argument("--statuses", type=str, default="")
     parser.add_argument("--date_from", type=str, default="")
     parser.add_argument("--date_to", type=str, default="")
-    
+    # MDP3-SWIP1: Campaign tracking
+    parser.add_argument("--pull-id", type=str, default=None,
+        help="Campaign Sandbox Pull ID for tracking")
+
     args = parser.parse_args()
 
-    start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open("biocrawler_time_logger.md", "a", encoding="utf-8") as f:
-        f.write(f"| {start_time} | STARTED | {args.mode} | |\n")
+    start_ts = datetime.now()
+    start_time = start_ts.strftime("%Y-%m-%d %H:%M:%S")
 
     if telegram_notifier:
-        telegram_notifier.send_alert(f"BioCrawler Started%0A%0AMode: {args.mode.upper()}%0ATarget: ClinicalTrials, SEC EDGAR, ATS", level="info")
+        telegram_notifier.send_alert(f"BioCrawler Started\n\nMode: {args.mode.upper()}\nTarget: ClinicalTrials, SEC EDGAR, ATS", level="info")
 
     try:
         # Instantiate the engine
@@ -522,24 +529,49 @@ if __name__ == "__main__":
             # Step 5: Re-calculate tiers based on the new deep-crawl discoveries
             crawler.synthesize_and_export()
         
-        end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open("biocrawler_time_logger.md", "a", encoding="utf-8") as f:
-            f.write(f"| {end_time} | COMPLETED | {args.mode} | |\n")
-            
+        end_ts = datetime.now()
+        duration = (end_ts - start_ts).total_seconds()
+        end_time = end_ts.strftime("%Y-%m-%d %H:%M:%S")
+
+        # ── MDP3-SWIP1: Write structured JSON summary ─────────────────────────
+        SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
+        summary = {
+            "engine": "biocrawler",
+            "timestamp": end_ts.isoformat(),
+            "mode": args.mode,
+            "status": "success",
+            "duration_seconds": round(duration, 2),
+        }
+        summary_path = SUMMARY_DIR / "biocrawler_summary.json"
+        with open(summary_path, "w") as f:
+            json.dump(summary, f, indent=2)
+
         if telegram_notifier:
-            msg = f"BioCrawler Sync Complete%0A%0AMode: {args.mode.upper()}%0AStatus: ✅ Success%0A%0ADatabase is up to date."
+            msg = f"BioCrawler Sync Complete\n\nMode: {args.mode.upper()}\nStatus: ✅ Success\nDuration: {duration:.0f}s\n\nDatabase is up to date."
             telegram_notifier.send_alert(msg, level="success")
 
     except Exception as e:
-        end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open("biocrawler_time_logger.md", "a", encoding="utf-8") as f:
-            f.write(f"| {end_time} | FAILED | {args.mode} | See bug_fix_log.md |\n")
-        
-        with open("bug_fix_log.md", "a", encoding="utf-8") as f:
-            error_details = str(e).replace('\n', ' ')
-            f.write(f"| {end_time} | Execution Loop | {error_details} | Pending |\n")
-            
+        end_ts = datetime.now()
+        duration = (end_ts - start_ts).total_seconds()
+        end_time = end_ts.strftime("%Y-%m-%d %H:%M:%S")
+
+        # MDP3-SWIP1: Write failure summary JSON
+        try:
+            SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
+            fail_summary = {
+                "engine": "biocrawler",
+                "timestamp": end_ts.isoformat(),
+                "mode": args.mode if hasattr(args, "mode") else "unknown",
+                "status": "failure",
+                "error": str(e),
+                "duration_seconds": round(duration, 2),
+            }
+            with open(SUMMARY_DIR / "biocrawler_summary.json", "w") as f:
+                json.dump(fail_summary, f, indent=2)
+        except Exception:
+            pass
+
         if telegram_notifier:
-            msg = f"BIOCRAWLER CRASHED%0A%0AMode: {args.mode.upper()}%0AError: {str(e)}%0A%0ACheck bug_fix_log.md immediately."
+            msg = f"BIOCRAWLER CRASHED\n\nMode: {args.mode.upper()}\nError: {str(e)[:200]}\n\nCheck biocrawler_summary.json."
             telegram_notifier.send_alert(msg, level="error")
         raise
