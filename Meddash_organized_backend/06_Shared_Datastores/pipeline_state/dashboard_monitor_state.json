@@ -1,0 +1,15 @@
+{
+  "last_check": "2026-04-27T05:53:00Z",
+  "last_status": "initialized",
+  "db_counts": {
+    "kols": 8298,
+    "biotech_leads": 651,
+    "trials": 100
+  },
+  "dashboard_url": "http://localhost:5090",
+  "streamlit_pid": 27642,
+  "issues_created": 0,
+  "self_heals": 0,
+  "dashboard_health": "ok",
+  "summaries_fresh": true
+}

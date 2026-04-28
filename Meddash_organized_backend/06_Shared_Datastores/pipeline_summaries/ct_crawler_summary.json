@@ -1,0 +1,12 @@
+{
+  "engine": "ct_data",
+  "timestamp": "2026-04-27T18:15:36.745661+00:00",
+  "mode": "delta",
+  "query": null,
+  "hours": 24,
+  "status": "success",
+  "trials_saved": 906,
+  "trials_skipped": 0,
+  "pages_fetched": 10,
+  "duration_seconds": 12.16
+}

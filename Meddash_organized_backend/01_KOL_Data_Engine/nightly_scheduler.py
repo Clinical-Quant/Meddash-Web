@@ -190,6 +190,10 @@ def main():
         "--skip-rotation", action="store_true",
         help="Skip Tier 2 MeSH rotation (use only BioCrawler leads)"
     )
+    parser.add_argument(
+        "--json-summary", action="store_true",
+        help="Write pipeline summary JSON to shared summaries directory"
+    )
     
     args = parser.parse_args()
     

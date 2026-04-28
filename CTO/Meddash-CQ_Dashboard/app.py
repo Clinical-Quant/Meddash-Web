@@ -35,6 +35,7 @@ with open(css_path, "r", encoding="utf-8") as f:
 # ── Route map ────────────────────────────────────────────────────────────────
 PAGES = {
     "🏭 Factory Floor": "widgets.factory_floor",     # Layer 5 Bridge + animated flow
+    "🛠️ Pipeline Health": "widgets.pipeline_health", # Live Mermaid health diagram
     "💗 Pulse":         "widgets.pulse",               # Layer 1 top bar
     "🔬 Meddash":       "widgets.meddash_panel",        # Layer 2
     "💊 Clinical Quant": "widgets.cq_panel",            # Layer 3
