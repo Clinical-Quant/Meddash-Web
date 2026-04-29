@@ -1,0 +1,59 @@
+{
+  "engine": "kol_centrality",
+  "timestamp": "2026-04-28T07:03:20.116998+00:00",
+  "status": "success",
+  "duration_seconds": 14.36,
+  "run_id": "centrality_20260428_070305_db4fba68",
+  "method_version": "authorship_centrality_v1.0",
+  "graph_scope": "global_authorship",
+  "pull_id": "hermes_initial_20260428",
+  "source_row_counts": {
+    "kols": 8485,
+    "kol_authorships": 8461,
+    "publications": 922,
+    "kol_merge_candidates": 241
+  },
+  "join_quality": {
+    "kols_with_any_publication": 8020,
+    "kols_with_any_coauthor": 7997,
+    "source_kol_count": 8485,
+    "coauthor_mapping_rate": 0.9425
+  },
+  "graph_stats": {
+    "node_count": 8485,
+    "edge_count": 54824,
+    "authorship_rows": 8461,
+    "publication_groups": 909,
+    "usable_coauthored_publications": 878,
+    "skipped_single_author_or_unmapped_publications": 31
+  },
+  "score_distribution": {
+    "count": 8485,
+    "min": 0.0,
+    "max": 99.87,
+    "mean": 49.21,
+    "median": 48.63,
+    "tier_counts": {
+      "Emerging/Peripheral": 712,
+      "Insufficient Data": 488,
+      "Tier 1 \u2014 Network Anchor": 248,
+      "Tier 2 \u2014 Strong Connector": 1115,
+      "Tier 3 \u2014 Established Node": 2604,
+      "Tier 4 \u2014 Peripheral/Mapped": 3318
+    }
+  },
+  "reliability_distribution": {
+    "high": 28,
+    "low": 6072,
+    "moderate": 1682,
+    "very_low": 703
+  },
+  "scores_calculated": 8485,
+  "scores_written": 8485,
+  "local_paths": [
+    "/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/06_Shared_Datastores/centrality_outputs/kol_authorship_centrality_latest.csv",
+    "/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/06_Shared_Datastores/centrality_outputs/kol_authorship_centrality_centrality_20260428_070305_db4fba68.csv"
+  ],
+  "warnings": [],
+  "error": null
+}

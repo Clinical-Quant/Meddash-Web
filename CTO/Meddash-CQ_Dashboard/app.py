@@ -38,6 +38,7 @@ PAGES = {
     "🛠️ Pipeline Health": "widgets.pipeline_health", # Live Mermaid health diagram
     "💗 Pulse":         "widgets.pulse",               # Layer 1 top bar
     "🔬 Meddash":       "widgets.meddash_panel",        # Layer 2
+    "🤝 Meddash CRM":   "widgets.meddash_crm",          # CRM placeholder — coming soon
     "💊 Clinical Quant": "widgets.cq_panel",            # Layer 3
     "⚙️ Operations":    "widgets.operations",           # Layer 4
     "🔧 KOL Ingest":   "widgets.kol_ingest",           # Dr. Don's tool — separate tab

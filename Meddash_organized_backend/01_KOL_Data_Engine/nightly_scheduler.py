@@ -105,7 +105,7 @@ def get_tier1_targets() -> list:
 
 # ── Pipeline Execution ────────────────────────────────────────────────────
 
-def run_pipeline(targets: list, max_results: int = 50, pull_id: str = None) -> dict:
+def run_pipeline(targets: list, max_results: int = 50, pull_id: str = None, run_centrality: bool = True, centrality_write_mode: str = "supabase") -> dict:
     """Execute the KOL pipeline via run_pipeline.py.
     
     Returns dict with: exit_code, stdout, stderr, duration_seconds
@@ -114,6 +114,8 @@ def run_pipeline(targets: list, max_results: int = 50, pull_id: str = None) -> d
     
     cmd = [sys.executable, str(pipeline_script), "--targets"] + targets
     cmd += ["--max_results", str(max_results)]
+    if run_centrality:
+        cmd += ["--run_centrality", "--centrality_write_mode", centrality_write_mode]
     if pull_id:
         cmd += ["--pull_id", pull_id]
     
@@ -194,6 +196,14 @@ def main():
         "--json-summary", action="store_true",
         help="Write pipeline summary JSON to shared summaries directory"
     )
+    parser.add_argument(
+        "--skip-centrality", action="store_true",
+        help="Skip automatic authorship centrality after KOL pull"
+    )
+    parser.add_argument(
+        "--centrality-write-mode", choices=["dry-run", "local", "supabase"], default="supabase",
+        help="Centrality output mode when automatic centrality is enabled"
+    )
     
     args = parser.parse_args()
     
@@ -240,6 +250,7 @@ def main():
         print(f"Tier1 count:      {len(get_tier1_targets())}")
         print(f"Dedup applied:    {dedup_applied}")
         print(f"Pull ID:          {args.pull_id or 'None'}")
+        print(f"Centrality:       {'disabled' if args.skip_centrality else args.centrality_write_mode}")
         
         state = get_rotation_state()
         print(f"\nRotation state:")
@@ -261,7 +272,13 @@ def main():
         )
     
     start_time = time.time()
-    result = run_pipeline(targets, max_results=args.max_results, pull_id=args.pull_id)
+    result = run_pipeline(
+        targets,
+        max_results=args.max_results,
+        pull_id=args.pull_id,
+        run_centrality=not args.skip_centrality,
+        centrality_write_mode=args.centrality_write_mode,
+    )
     duration = round(time.time() - start_time, 2)
     
     # ── Process Results ────────────────────────────────────────────────
@@ -303,6 +320,8 @@ def main():
         "pull_id": args.pull_id,
         "stdout_last_line": result["stdout"].strip().split("\n")[-1] if result["stdout"] else "",
         "stderr_last_line": result["stderr"].strip().split("\n")[-1] if result["stderr"] else "",
+        "centrality_enabled": not args.skip_centrality,
+        "centrality_write_mode": args.centrality_write_mode if not args.skip_centrality else "disabled",
     }
     write_summary(summary)
     

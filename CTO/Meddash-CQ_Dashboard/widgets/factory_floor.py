@@ -1,237 +1,326 @@
 """
 LAYER 5: THE BRIDGE — Factory Floor
-Animated Mermaid-style data flow diagram of the MEDDASH-CQ production line.
-This is the centerpiece — Dr. Don's factory.
+Modern executive overview of the MEDDASH-CQ production line.
+
+Purpose:
+- Explain what the factory is producing.
+- Show whether engines are fresh, stale, missing, or idle.
+- Connect raw data inventory → engine flow → commercial products.
 """
 
-import streamlit as st
-from datetime import datetime, timedelta
-import os
+from datetime import datetime, timedelta, timezone
+import html
+import json
 import sqlite3
+
+import streamlit as st
+
 from supabase_client import sb
 from config import SQLITE_PATHS, PRODUCT_PATHS
 
+
+STATUS_META = {
+    "green": {
+        "dot": "●",
+        "label": "Fresh / active",
+        "class": "status-green",
+        "explain": "Recent successful activity. For SQLite engines this means the database changed within 6 hours; for CQ this means recent catalysts exist.",
+    },
+    "yellow": {
+        "dot": "●",
+        "label": "Stale / needs attention",
+        "class": "status-yellow",
+        "explain": "Some activity exists, but it is not fresh. For SQLite engines this means last update is 6–24 hours old.",
+    },
+    "red": {
+        "dot": "●",
+        "label": "Missing / broken",
+        "class": "status-red",
+        "explain": "Expected source was not found or a check failed. This needs investigation.",
+    },
+    "grey": {
+        "dot": "●",
+        "label": "Idle / not instrumented",
+        "class": "status-grey",
+        "explain": "No direct health signal yet, or the component is intentionally idle. Grey does not always mean broken.",
+    },
+}
+
+
+ENGINE_DESCRIPTIONS = {
+    "kol_engine": "Builds the key-opinion-leader database used to create KOL intelligence briefs.",
+    "ct_engine": "Collects clinical trial records that support therapeutic-area context and trial landscape views.",
+    "biocrawler": "Finds biotech companies and lead targets that can become prospects or CQ-tracked tickers.",
+    "bridge": "Connects Meddash company/ticker data into Clinical Quant monitoring. No separate DB yet, so shown grey until instrumented.",
+    "scholar": "Adds publication/scholar metrics to KOL profiles. Uses the KOL database, so it needs a dedicated health signal later.",
+    "kol_centrality": "Calculates authorship-network centrality for every KOL and writes transparent score/reliability rows back to Supabase.",
+    "sec_8k": "Watches SEC 8-K events for biotech catalyst signals.",
+    "fda_pdufa": "Tracks FDA/PDUFA dates that can become Clinical Quant newsletter catalysts.",
+    "pr_wire": "Aggregates biotech press releases for catalyst detection.",
+    "ticker_enrich": "Adds stock tickers to biotech leads so companies can flow into CQ monitoring.",
+    "cq_agent": "Paperclip/n8n agent layer that turns detected catalysts into researched newsletter workflow items.",
+}
+
+
+PRODUCT_DESCRIPTIONS = {
+    "KOL Briefs": "Client-ready deliverable: a concise medical-affairs intelligence brief around a named expert, disease area, or company need.",
+    "TA Landscapes": "Therapeutic-area map: trials, experts, companies, and context assembled into a reusable landscape asset.",
+    "CQ Posts": "Clinical Quant newsletter/social posts generated from verified catalyst events.",
+}
+
+
 def render():
-    st.title("🏭 Factory Floor")
-    st.caption("*This is your factory. The production line. Watch it flow.*")
+    st.markdown(
+        """
+        <div class="factory-hero">
+          <div class="factory-eyebrow">Layer 5 · Executive factory floor</div>
+          <h1>🏭 MEDDASH-CQ Factory Floor</h1>
+          <p>
+            This page explains the business machine: raw medical/biotech data enters on the left,
+            engines process it in the middle, and sellable outputs leave on the right.
+          </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    # ── FACTORY OUTPUT (top of page — the most important metric) ───────────
-    st.markdown("---")
-    st.subheader("📦 Factory Output This Week")
+    _render_status_legend()
+    _render_factory_output()
+    _render_production_line()
+    _render_data_inventory()
+    _render_bridge_spine()
+
+
+def _render_status_legend():
+    st.markdown("### How to read this page")
+    st.caption("Every colored dot is a health signal. Hover a dot/card where your browser supports tooltips.")
+
     cols = st.columns(4)
+    for col, status in zip(cols, ["green", "yellow", "red", "grey"]):
+        meta = STATUS_META[status]
+        with col:
+            st.markdown(
+                f"""
+                <div class="legend-card" title="{html.escape(meta['explain'])}">
+                  <span class="factory-dot {meta['class']}">{meta['dot']}</span>
+                  <strong>{meta['label']}</strong>
+                  <div>{meta['explain']}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-    # Count briefs
-    brief_path = PRODUCT_PATHS.get("kol_briefs")
-    briefs_this_week = 0
-    if brief_path and brief_path.exists():
-        week_ago = datetime.now() - timedelta(days=7)
-        for f in brief_path.iterdir():
-            if f.is_file() and f.stat().st_mtime > week_ago.timestamp():
-                briefs_this_week += 1
 
-    # Count TA landscapes
-    ta_path = PRODUCT_PATHS.get("ta_landscapes")
-    ta_this_week = 0
-    if ta_path and ta_path.exists():
-        week_ago = datetime.now() - timedelta(days=7)
-        for f in ta_path.iterdir():
-            if f.is_file() and f.stat().st_mtime > week_ago.timestamp():
-                ta_this_week += 1
+def _render_factory_output():
+    st.markdown("---")
+    st.markdown("### Factory output this week")
+    st.caption(
+        "This is the production scoreboard. It counts files created in product folders during the last 7 days. "
+        "If output is zero, the factory may be running but not producing client-ready assets."
+    )
 
-    # CQ posts — placeholder (newsletter not automated yet)
-    cq_posts_this_week = 0
+    briefs_this_week = _count_recent_files(PRODUCT_PATHS.get("kol_briefs"))
+    ta_this_week = _count_recent_files(PRODUCT_PATHS.get("ta_landscapes"))
+    cq_posts_this_week = 0  # newsletter publishing is still manual/not wired to a product folder
 
+    cols = st.columns(3)
     with cols[0]:
-        if briefs_this_week > 0:
-            st.markdown('<div class="output-producing">', unsafe_allow_html=True)
-            st.metric("KOL Briefs", briefs_this_week, delta="PRODUCING")
-            st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="output-zero">', unsafe_allow_html=True)
-            st.metric("KOL Briefs", 0, delta="IDLE", delta_color="inverse")
-            st.markdown('</div>', unsafe_allow_html=True)
+        _metric_card(
+            title="KOL Briefs",
+            value=str(briefs_this_week),
+            state="producing" if briefs_this_week else "idle",
+            description=PRODUCT_DESCRIPTIONS["KOL Briefs"],
+            footer="Counted from the KOL brief output folder.",
+        )
     with cols[1]:
-        if ta_this_week > 0:
-            st.markdown('<div class="output-producing">', unsafe_allow_html=True)
-            st.metric("TA Landscapes", ta_this_week, delta="PRODUCING")
-            st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="output-zero">', unsafe_allow_html=True)
-            st.metric("TA Landscapes", 0, delta="IDLE", delta_color="inverse")
-            st.markdown('</div>', unsafe_allow_html=True)
+        _metric_card(
+            title="TA Landscapes",
+            value=str(ta_this_week),
+            state="producing" if ta_this_week else "idle",
+            description=PRODUCT_DESCRIPTIONS["TA Landscapes"],
+            footer="Counted from the TA landscape output folder.",
+        )
     with cols[2]:
-        if cq_posts_this_week > 0:
-            st.markdown('<div class="output-producing">', unsafe_allow_html=True)
-            st.metric("CQ Posts", cq_posts_this_week, delta="PRODUCING")
-            st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div class="output-zero">', unsafe_allow_html=True)
-            st.metric("CQ Posts", 0, delta="IDLE", delta_color="inverse")
-            st.markdown('</div>', unsafe_allow_html=True)
-    with cols[3]:
-        revenue = briefs_this_week * 2450
-        if revenue > 0:
-            st.metric("Revenue This Week", f"${revenue:,}", delta="🟢 CASH FLOWING")
-        else:
-            st.metric("Revenue This Week", "$0", delta="🔴 NO REVENUE", delta_color="inverse")
+        _metric_card(
+            title="CQ Posts",
+            value=str(cq_posts_this_week),
+            state="idle",
+            description=PRODUCT_DESCRIPTIONS["CQ Posts"],
+            footer="Manual publishing is not counted automatically yet.",
+        )
 
-    # ── DATA INVENTORY (warehouse counts) ──────────────────────────────────
+    st.info(
+        "Revenue and pipeline value are intentionally hidden until a CRM is connected. "
+        "For now this page only shows production output — not sales, bookings, or client revenue.",
+        icon="ℹ️",
+    )
+
+
+def _render_production_line():
     st.markdown("---")
-    st.subheader("🗂️ Data Inventory")
-    st.caption("*Your stock. If inventory is low, you can't fulfill orders.*")
+    st.markdown("### Production line")
+    st.caption(
+        "A readable map of what each engine does. Meddash builds intelligence assets; Clinical Quant turns market catalysts into publishable content."
+    )
 
-    # SQLite counts
-    inventory = {}
-    for db_name, db_path in SQLITE_PATHS.items():
-        if db_path.exists():
-            try:
-                conn = sqlite3.connect(str(db_path))
-                cur = conn.cursor()
-                # Get list of tables
-                cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-                tables = [r[0] for r in cur.fetchall()]
-                counts = {}
-                for t in tables:
-                    try:
-                        cur.execute(f"SELECT count(*) FROM [{t}]")
-                        counts[t] = cur.fetchone()[0]
-                    except:
-                        pass
-                inventory[db_name] = counts
-                conn.close()
-            except:
-                inventory[db_name] = {"ERROR": -1}
-        else:
-            inventory[db_name] = {"NOT FOUND": 0}
-
-    # Supabase counts (key tables)
-    sb_tables = ["kols", "kols_staging", "kol_merge_candidates", "kol_scholar_metrics",
-                  "biotech_leads", "trials", "cq_regulatory_catalysts"]
-    sb_counts = {}
-    if sb.is_configured:
-        sb_counts = sb.get_table_row_counts(sb_tables)
-
-    inv_cols = st.columns(3)
-    for i, (db_name, tables) in enumerate(inventory.items()):
-        with inv_cols[i]:
-            st.markdown(f"**🗄️ {db_name}.db**")
-            for table, cnt in tables.items():
-                health = "🟢" if cnt > 0 else "🟡" if cnt == 0 else "🔴"
-                st.markdown(f"  {health} {table}: **{cnt:,}**")
-
-    if sb_counts:
-        with inv_cols[2]:
-            st.markdown("**☁️ Supabase (PostgreSQL)**")
-            for table, cnt in sb_counts.items():
-                health = "🟢" if cnt > 0 else "🟡" if cnt == 0 else "🔴"
-                st.markdown(f"  {health} {table}: **{cnt:,}**")
-
-    # ── ANIMATED DATA FLOW DIAGRAM ────────────────────────────────────────
-    st.markdown("---")
-    st.subheader("🔀 Production Line — Data Flow")
-    st.caption("*Active engines pulse green. Idle grey. Broken flash red. Arrow thickness = data volume.*")
-
-    # Build the flow diagram using Streamlit columns + HTML/CSS
-    # This is the Mermaid-style flow, recreated with Streamlit layout
-
-    # Get engine health for coloring
     engine_status = _get_engine_status()
 
-    # ROW 1: Meddash Engine → Products
-    st.markdown('<div class="meddash-header"><h3>🔬 MEDDASH Department</h3></div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="department-header meddash-modern">
+          <div>
+            <h3>🔬 MEDDASH Department</h3>
+            <p>Builds medical-affairs intelligence assets: KOL data, trial context, biotech lead lists, and client-facing briefs.</p>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    m_cols = st.columns(7)
     engines_meddash = [
-        ("KOL\nEngine", "kol_engine"),
-        ("CT\nEngine", "ct_engine"),
-        ("BioCrawler\nGTM", "biocrawler"),
-        ("Bridge\nEngine", "bridge"),
-        ("Scholar\nScraper", "scholar"),
+        ("KOL Engine", "kol_engine", "Database → KOL profiles"),
+        ("CT Engine", "ct_engine", "Trials → context"),
+        ("BioCrawler GTM", "biocrawler", "Companies → leads"),
+        ("Bridge Engine", "bridge", "Tickers → CQ handoff"),
+        ("Scholar Scraper", "scholar", "Publications → credibility"),
+        ("KOL Centrality", "kol_centrality", "Authorship graph → scores"),
     ]
+    _render_engine_row(engines_meddash, engine_status, accent="#42a5f5")
 
-    for i, (name, key) in enumerate(engines_meddash):
-        status = engine_status.get(key, "grey")
-        icon = {"green": "🟢", "yellow": "🟡", "red": "🔴", "grey": "⚫"}.get(status, "⚫")
-        with m_cols[i]:
-            st.markdown(f"<div style='text-align:center; padding:8px; border:1px solid #2a2e35; border-radius:8px; background:#1a1d23;'>"
-                        f"<div style='font-size:24px'>{icon}</div>"
-                        f"<div style='font-size:0.75em; color:#e0e0e0; margin-top:4px'>{name}</div>"
-                        f"</div>", unsafe_allow_html=True)
-        # Arrow between engines
-        if i < len(engines_meddash) - 1:
-            with m_cols[i]:
-                st.markdown("<div class='flow-arrow'>→</div>", unsafe_allow_html=True)
-
-    # Arrow down to products
-    st.markdown("<div class='flow-arrow' style='font-size:32px; padding: 4px 0;'>⬇</div>", unsafe_allow_html=True)
-
+    st.markdown("<div class='flow-down'>↓ Output layer</div>", unsafe_allow_html=True)
     p_cols = st.columns(2)
     with p_cols[0]:
-        st.markdown("<div style='text-align:center; padding:12px; border:2px solid #42a5f5; border-radius:8px; background:#1a2332;'>"
-                    "<div style='font-size:18px'>📄 KOL Briefs</div>"
-                    "<div style='font-size:0.8em; color:#42a5f5'>$2,450/revenue</div>"
-                    "</div>", unsafe_allow_html=True)
+        _product_card(
+            "📄 KOL Briefs",
+            "Client-ready intelligence brief",
+            PRODUCT_DESCRIPTIONS["KOL Briefs"],
+            "Not a button — this is a product output type leaving the factory.",
+            "#42a5f5",
+        )
     with p_cols[1]:
-        st.markdown("<div style='text-align:center; padding:12px; border:2px solid #42a5f5; border-radius:8px; background:#1a2332;'>"
-                    "<div style='font-size:18px'>📊 TA Landscapes</div>"
-                    "<div style='font-size:0.8em; color:#42a5f5'>Product output</div>"
-                    "</div>", unsafe_allow_html=True)
+        _product_card(
+            "📊 TA Landscapes",
+            "Reusable intelligence asset",
+            PRODUCT_DESCRIPTIONS["TA Landscapes"],
+            "Supports sales, briefs, and expert mapping.",
+            "#42a5f5",
+        )
 
-    # ROW 2: CQ Engine → Newsletter
-    st.markdown("---")
-    st.markdown('<div class="cq-header"><h3>💊 CLINICAL QUANT Department</h3></div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="department-header cq-modern">
+          <div>
+            <h3>💊 CLINICAL QUANT Department</h3>
+            <p>Monitors public biotech catalysts and converts verified signals into newsletter/social publishing workflow.</p>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    cq_cols = st.columns(5)
     engines_cq = [
-        ("SEC 8K\nMonitor", "sec_8k"),
-        ("FDA PDUFA\nTracker", "fda_pdufa"),
-        ("PR Wire\nAggregator", "pr_wire"),
-        ("Ticker\nEnrichment", "ticker_enrich"),
-        ("Permanent\nAgent ✨", "cq_agent"),
+        ("SEC 8-K Monitor", "sec_8k", "Filings → catalysts"),
+        ("FDA PDUFA Tracker", "fda_pdufa", "FDA dates → catalysts"),
+        ("PR Wire Aggregator", "pr_wire", "Press releases → signals"),
+        ("Ticker Enrichment", "ticker_enrich", "Companies → tickers"),
+        ("Agent Layer", "cq_agent", "Research → draft workflow"),
     ]
+    _render_engine_row(engines_cq, engine_status, accent="#66bb6a")
 
-    for i, (name, key) in enumerate(engines_cq):
+    st.markdown("<div class='flow-down'>↓ Content workflow</div>", unsafe_allow_html=True)
+    _render_agent_pipeline()
+
+
+def _render_engine_row(engines, engine_status, accent):
+    cols = st.columns(len(engines))
+    for col, (name, key, output) in zip(cols, engines):
         status = engine_status.get(key, "grey")
-        icon = {"green": "🟢", "yellow": "🟡", "red": "🔴", "grey": "⚫"}.get(status, "⚫")
-        label = "✨" if key == "cq_agent" else icon
-        with cq_cols[i]:
-            border_color = "#66bb6a" if key == "cq_agent" else "#2a2e35"
-            st.markdown(f"<div style='text-align:center; padding:8px; border:1px solid {border_color}; border-radius:8px; background:#1a1d23;'>"
-                        f"<div style='font-size:24px'>{icon}</div>"
-                        f"<div style='font-size:0.7em; color:#e0e0e0; margin-top:4px'>{name}</div>"
-                        f"</div>", unsafe_allow_html=True)
+        meta = STATUS_META[status]
+        description = ENGINE_DESCRIPTIONS.get(key, "No description yet.")
+        with col:
+            st.markdown(
+                f"""
+                <div class="engine-card" style="--accent:{accent};" title="{html.escape(description)}">
+                  <div class="engine-status-line">
+                    <span class="factory-dot {meta['class']}">●</span>
+                    <span>{meta['label']}</span>
+                  </div>
+                  <h4>{html.escape(name)}</h4>
+                  <div class="engine-output">{html.escape(output)}</div>
+                  <p>{html.escape(description)}</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-    # Arrow down to CQ output
-    st.markdown("<div class='flow-arrow' style='font-size:32px; padding: 4px 0;'>⬇</div>", unsafe_allow_html=True)
 
-    # CQ Agent Pipeline (CEO request: catalyst → research → verify → draft → approval → post)
-    agent_cols = st.columns(6)
-    agent_stages = [
-        ("🔍 Detect", "Catalyst found"),
-        ("🔬 Research", "Deep analysis"),
-        ("✅ Verify", "Fact check"),
-        ("📝 Draft", "Write post"),
-        ("👨‍⚕️ Approve", "CEO review"),
-        ("📢 Publish", "CQ Free Newsletter"),
+def _render_agent_pipeline():
+    stages = [
+        ("🔍 Detect", "Catalyst found", "AUTO", "A script or monitor finds a market-moving event."),
+        ("🔬 Research", "Deep analysis", "AUTO", "Agent gathers context and checks why the catalyst matters."),
+        ("✅ Verify", "Fact check", "AUTO", "Agent confirms source quality and removes false positives."),
+        ("📝 Draft", "Write post", "AUTO", "Agent prepares a newsletter/social draft."),
+        ("👨‍⚕️ Approve", "CEO review", "MANUAL", "Dr. Don reviews before public publishing."),
+        ("📢 Publish", "Substack/LinkedIn", "MANUAL", "Final publishing remains manual unless later automated."),
     ]
-    for i, (stage, desc) in enumerate(agent_stages):
-        with agent_cols[i]:
-            # First 4 are automated, last 2 need human
-            auto = i < 4
-            bg = "#1a2e1a" if auto else "#2e2a1a"
-            border = "#66bb6a" if auto else "#ffa726"
-            st.markdown(f"<div style='text-align:center; padding:8px; border:1px solid {border}; border-radius:8px; background:{bg};'>"
-                        f"<div style='font-size:14px'>{stage}</div>"
-                        f"<div style='font-size:0.65em; color:#999; margin-top:2px'>{desc}</div>"
-                        f"<div style='font-size:0.6em; color:{border}; margin-top:2px'>{('AUTO' if auto else 'MANUAL')}</div>"
-                        f"</div>", unsafe_allow_html=True)
+    cols = st.columns(len(stages))
+    for col, (stage, desc, mode, tooltip) in zip(cols, stages):
+        auto = mode == "AUTO"
+        with col:
+            st.markdown(
+                f"""
+                <div class="stage-card {'stage-auto' if auto else 'stage-manual'}" title="{html.escape(tooltip)}">
+                  <div class="stage-title">{html.escape(stage)}</div>
+                  <div class="stage-desc">{html.escape(desc)}</div>
+                  <div class="stage-badge">{mode}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-    # ── BRIDGE SPINE ───────────────────────────────────────────────────────
+
+def _render_data_inventory():
     st.markdown("---")
-    st.subheader("🔗 Bridge Spine (Meddash → CQ)")
-    st.caption("*The shared data spine. Biotech leads with tickers flow from Meddash into CQ catalyst tracking.*")
+    st.markdown("### Data inventory")
+    st.caption(
+        "This is the warehouse. It shows whether the local SQLite stores and Supabase tables contain usable stock for the engines."
+    )
 
-    # Ticker bridge stats
+    inventory = _sqlite_inventory()
+    sb_tables = [
+        "kols",
+        "kols_staging",
+        "kol_merge_candidates",
+        "kol_scholar_metrics",
+        "kol_centrality_runs",
+        "kol_centrality_scores",
+        "biotech_leads",
+        "trials",
+        "cq_regulatory_catalysts",
+    ]
+    sb_counts = sb.get_table_row_counts(sb_tables) if sb.is_configured else {}
+
+    inv_cols = st.columns(4)
+    for i, (db_name, tables) in enumerate(inventory.items()):
+        with inv_cols[i % 4]:
+            total = sum(cnt for cnt in tables.values() if isinstance(cnt, int) and cnt > 0)
+            _inventory_card(f"🗄️ {db_name}.db", total, tables, "Local SQLite store")
+
+    with inv_cols[3]:
+        if sb_counts:
+            total = sum(cnt for cnt in sb_counts.values() if isinstance(cnt, int) and cnt > 0)
+            _inventory_card("☁️ Supabase", total, sb_counts, "Cloud/Postgres warehouse")
+        else:
+            _inventory_card("☁️ Supabase", 0, {"Not configured or unavailable": 0}, "Cloud/Postgres warehouse")
+
+
+def _render_bridge_spine():
+    st.markdown("---")
+    st.markdown("### Bridge spine: Meddash → Clinical Quant")
+    st.caption(
+        "The bridge is the shared data spine. Biotech leads with tickers can flow from Meddash prospecting into CQ catalyst monitoring."
+    )
+
     leads_total = 0
     leads_with_tickers = 0
     if sb.is_configured:
@@ -240,25 +329,117 @@ def render():
 
     bridging = leads_with_tickers if leads_with_tickers > 0 else 0
     missing = leads_total - bridging if leads_total > 0 else 0
+    pct = (bridging / leads_total * 100) if leads_total > 0 else 0
 
-    b_cols = st.columns(3)
-    with b_cols[0]:
-        st.metric("Leads with Tickers", bridging, help="These flow into CQ")
-    with b_cols[1]:
-        st.metric("Leads Missing Tickers", missing, help="Gap in the bridge", delta_color="inverse")
-    with b_cols[2]:
-        pct = (bridging / leads_total * 100) if leads_total > 0 else 0
-        st.metric("Bridge Completion", f"{pct:.0f}%")
+    cols = st.columns(3)
+    cols[0].metric("Leads with tickers", f"{bridging:,}", help="These can flow into CQ catalyst monitoring.")
+    cols[1].metric("Leads missing tickers", f"{missing:,}", help="These are stuck before the bridge because CQ needs tickers.")
+    cols[2].metric("Bridge completion", f"{pct:.0f}%", help="Share of biotech leads that have tickers.")
 
-    # Visual bridge
-    if leads_total > 0:
-        st.progress(pct / 100, text=f"Bridge: {bridging}/{leads_total} leads have tickers → flow to CQ")
+    st.progress(pct / 100 if pct else 0, text=f"Bridge status: {bridging:,}/{leads_total:,} leads have tickers → available for CQ")
+
+    st.markdown(
+        """
+        <div class="explain-box">
+          <strong>Why this matters:</strong> Meddash and CQ are not separate toys. Meddash builds the company/KOL/trial intelligence base;
+          CQ uses ticker-connected companies to monitor catalysts and create public market-facing content.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _metric_card(title, value, state, description, footer):
+    state_label = "PRODUCING" if state == "producing" else "IDLE / ZERO OUTPUT"
+    state_class = "metric-producing" if state == "producing" else "metric-idle"
+    st.markdown(
+        f"""
+        <div class="modern-metric {state_class}" title="{html.escape(description)}">
+          <div class="metric-kicker">{state_label}</div>
+          <h4>{html.escape(title)}</h4>
+          <div class="metric-value">{html.escape(value)}</div>
+          <p>{html.escape(description)}</p>
+          <div class="metric-footer">{html.escape(footer)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _product_card(title, subtitle, description, footer, accent):
+    st.markdown(
+        f"""
+        <div class="product-card" style="--accent:{accent};" title="{html.escape(description)}">
+          <div class="product-title">{html.escape(title)}</div>
+          <div class="product-subtitle">{html.escape(subtitle)}</div>
+          <p>{html.escape(description)}</p>
+          <div class="product-footer">{html.escape(footer)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _inventory_card(title, total, rows, subtitle):
+    row_html = []
+    for table, cnt in rows.items():
+        status = "green" if isinstance(cnt, int) and cnt > 0 else "yellow" if cnt == 0 else "red"
+        cnt_display = f"{cnt:,}" if isinstance(cnt, int) else str(cnt)
+        row_html.append(
+            f"<div class='inventory-row'><span><span class='factory-dot {STATUS_META[status]['class']}'>●</span>{html.escape(str(table))}</span><strong>{html.escape(cnt_display)}</strong></div>"
+        )
+    st.markdown(
+        f"""
+        <div class="inventory-card">
+          <div class="inventory-subtitle">{html.escape(subtitle)}</div>
+          <h4>{html.escape(title)}</h4>
+          <div class="inventory-total">{total:,}</div>
+          {''.join(row_html)}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _count_recent_files(path):
+    if not path or not path.exists():
+        return 0
+    week_ago = datetime.now() - timedelta(days=7)
+    count = 0
+    for f in path.iterdir():
+        if f.is_file() and f.stat().st_mtime > week_ago.timestamp():
+            count += 1
+    return count
+
+
+def _sqlite_inventory():
+    inventory = {}
+    for db_name, db_path in SQLITE_PATHS.items():
+        if db_path.exists():
+            try:
+                conn = sqlite3.connect(str(db_path))
+                cur = conn.cursor()
+                cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                tables = [r[0] for r in cur.fetchall()]
+                counts = {}
+                for table in tables:
+                    try:
+                        cur.execute(f"SELECT count(*) FROM [{table}]")
+                        counts[table] = cur.fetchone()[0]
+                    except Exception:
+                        counts[table] = -1
+                inventory[db_name] = counts
+                conn.close()
+            except Exception:
+                inventory[db_name] = {"ERROR": -1}
+        else:
+            inventory[db_name] = {"NOT FOUND": 0}
+    return inventory
 
 
 def _get_engine_status():
-    """Check engine health: green=recent activity, yellow=stale, red=error, grey=unknown."""
+    """Check engine health: green=recent activity, yellow=stale, red=missing/error, grey=unknown or not instrumented."""
     status = {}
-    # Check SQLite modification times as proxy for engine activity
     for db_name, db_path in SQLITE_PATHS.items():
         if db_path.exists():
             mtime = datetime.fromtimestamp(db_path.stat().st_mtime)
@@ -272,36 +453,66 @@ def _get_engine_status():
         else:
             status[db_name] = "red"
 
-    # Map SQLite names to engine names
     engine_map = {
         "kol_engine": status.get("kols", "grey"),
         "ct_engine": status.get("trials", "grey"),
         "biocrawler": status.get("biocrawler", "grey"),
-        "bridge": "grey",      # bridge_engine.py doesn't have its own DB
-        "scholar": "grey",     # scholar metrics are in kols DB
-        "sec_8k": "grey",      # CQ engines — check Supabase
+        "bridge": "grey",
+        "scholar": "grey",
+        "kol_centrality": _centrality_status(),
+        "sec_8k": "grey",
         "fda_pdufa": "grey",
         "pr_wire": "grey",
         "ticker_enrich": "grey",
-        "cq_agent": "grey",    # permanent agent — not yet running
+        "cq_agent": "grey",
     }
 
-    # If Supabase has recent catalysts, CQ engines are green
     if sb.is_configured:
         catalysts = sb.select("cq_regulatory_catalysts", columns="created_at", limit=1)
         if catalysts:
             try:
                 latest = catalysts[0].get("created_at", "")
                 if latest:
-                    # If any catalyst in last 48h, engines are green
-                    from datetime import timezone
                     latest_dt = datetime.fromisoformat(latest.replace("Z", "+00:00"))
                     age_h = (datetime.now(timezone.utc) - latest_dt).total_seconds() / 3600
                     if age_h < 48:
                         engine_map["sec_8k"] = "green"
                         engine_map["fda_pdufa"] = "green"
                         engine_map["pr_wire"] = "green"
-            except:
+            except Exception:
                 pass
 
+        ticker_count = sb.count_with_filter("biotech_leads", "ticker", "not.is", None)
+        if ticker_count > 0:
+            engine_map["ticker_enrich"] = "green"
+            engine_map["bridge"] = "green"
+
     return engine_map
+
+
+def _centrality_status():
+    """Health for Engine 10: KOL Centrality. Uses summary freshness first, Supabase rows second."""
+    summary_path = SQLITE_PATHS["kols"].parent / "pipeline_summaries" / "kol_centrality_summary.json"
+    if summary_path.exists():
+        try:
+            data = json.loads(summary_path.read_text(encoding="utf-8"))
+            status = data.get("status")
+            latest = data.get("timestamp")
+            if status in ("failure", "error"):
+                return "red"
+            if latest:
+                latest_dt = datetime.fromisoformat(latest.replace("Z", "+00:00"))
+                age_h = (datetime.now(timezone.utc) - latest_dt).total_seconds() / 3600
+                if age_h < 24:
+                    return "green"
+                if age_h < 72:
+                    return "yellow"
+                return "grey"
+            if data.get("scores_written", 0) > 0:
+                return "yellow"
+        except Exception:
+            return "yellow"
+
+    if sb.is_configured and sb.count("kol_centrality_scores") > 0:
+        return "yellow"
+    return "grey"

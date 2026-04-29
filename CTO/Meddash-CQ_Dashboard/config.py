@@ -55,6 +55,8 @@ SB_TABLE_SELECT_COLUMNS = {
     "kols_staging": "id",
     "kol_merge_candidates": "id",
     "kol_scholar_metrics": "kol_id",  # No 'id' column
+    "kol_centrality_runs": "run_id",   # Centrality run ledger
+    "kol_centrality_scores": "kol_id", # One latest score row per KOL per run
     "biotech_leads": "company_name",   # No 'id' column
     "trials": "nct_id",               # Supabase table is 'trials' not 'ct_trials'
     "cq_regulatory_catalysts": "id",
@@ -66,6 +68,8 @@ SB_TABLES = [
     "kols_staging",
     "kol_merge_candidates",
     "kol_scholar_metrics",
+    "kol_centrality_runs",
+    "kol_centrality_scores",
     "biotech_leads",
     "trials",                       # NOT 'ct_trials'
     "cq_regulatory_catalysts",

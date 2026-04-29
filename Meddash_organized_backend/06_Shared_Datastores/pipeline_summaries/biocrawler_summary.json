@@ -1,7 +1,7 @@
 {
   "engine": "biocrawler",
-  "timestamp": "2026-04-27T14:15:40.334991",
-  "mode": "all",
+  "timestamp": "2026-04-28T16:20:43.445039",
+  "mode": "test",
   "status": "success",
-  "duration_seconds": 483.1
+  "duration_seconds": 43.66
 }

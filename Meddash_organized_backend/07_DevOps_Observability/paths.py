@@ -65,6 +65,7 @@ ENGINE_PATHS = {
     "devops":         MEDDASH_ROOT / "07_DevOps_Observability",
     "mdm_ontology":   MEDDASH_ROOT / "08_MDM_Ontology_Engine",
     "scholar":        MEDDASH_ROOT / "09_Scholar_Engine",
+    "centrality":     MEDDASH_ROOT / "10_KOL_Centrality_Engine",
     "cq_team":        MEDDASH_ROOT.parent / "CTO" / "CQ_Team",
 }
 
@@ -98,6 +99,7 @@ STATE_FILES = {
     "ct_crawl_state":     ENGINE_PATHS["ct_data"] / "ct_crawl_state.json",
     "kol_pipeline_state":  STATE_DIR / "kol_pipeline_state.json",
     "biocrawler_state":   STATE_DIR / "biocrawler_state.json",
+    "kol_centrality_state": STATE_DIR / "kol_centrality_state.json",
 }
 
 # ── Summary File Paths ────────────────────────────────────────────────────
@@ -108,6 +110,7 @@ SUMMARY_FILES = {
     "ct_ingestion":   SUMMARY_DIR / "ct_ingestion_summary.json",
     "biocrawler":    SUMMARY_DIR / "biocrawler_summary.json",
     "scholar_sync":  SUMMARY_DIR / "scholar_sync_summary.json",
+    "kol_centrality": SUMMARY_DIR / "kol_centrality_summary.json",
 }
 
 # ── Environment ────────────────────────────────────────────────────────────

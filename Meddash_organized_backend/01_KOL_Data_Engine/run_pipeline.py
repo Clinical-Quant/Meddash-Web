@@ -5,6 +5,8 @@ import logging
 import traceback
 import os
 import sys
+import subprocess
+from pathlib import Path
 
 # Import the centralized DevOps notifier
 sys.path.append(r"C:\Users\email\.gemini\antigravity\Meddash_organized_backend\07_DevOps_Observability")
@@ -29,7 +31,40 @@ logging.basicConfig(
     ]
 )
 
-def run_nightly_pipeline(target_diseases: list, pull_id: str = None, max_results: int = 50):
+def run_centrality_phase(pull_id: str = None, write_mode: str = "local"):
+    """Run authorship centrality as a single-shot downstream phase."""
+    root = Path(__file__).resolve().parents[1]
+    script = root / "10_KOL_Centrality_Engine" / "run_centrality.py"
+    if write_mode == "dry-run":
+        write_flag = "--dry-run"
+    elif write_mode == "supabase":
+        write_flag = "--write-supabase"
+    else:
+        write_flag = "--write-local"
+    cmd = [
+        sys.executable,
+        str(script),
+        write_flag,
+        "--min-publications", "1",
+        "--min-join-rate", "0.90",
+        "--triggered-by", "kol_pipeline",
+    ]
+    if write_mode == "supabase":
+        cmd.extend(["--write-local"])
+    if pull_id:
+        cmd.extend(["--pull-id", pull_id])
+    logging.info("Phase 5: Running KOL authorship centrality (%s)", write_mode)
+    result = subprocess.run(cmd, cwd=str(root), text=True, capture_output=True, timeout=600)
+    if result.stdout:
+        logging.info("Centrality stdout: %s", result.stdout[-2000:])
+    if result.stderr:
+        logging.warning("Centrality stderr: %s", result.stderr[-2000:])
+    if result.returncode not in (0, 1):
+        raise RuntimeError(f"Centrality phase failed with exit code {result.returncode}")
+    return result.returncode
+
+
+def run_nightly_pipeline(target_diseases: list, pull_id: str = None, max_results: int = 50, run_centrality: bool = False, centrality_write_mode: str = "local"):
     logging.info(f"Starting pipeline. Targets: {target_diseases}")
     if pull_id:
          logging.info(f"Using Campaign Sandbox mode with Pull ID: {pull_id}")
@@ -69,6 +104,9 @@ def run_nightly_pipeline(target_diseases: list, pull_id: str = None, max_results
         logging.info("Phase 4: Computing Publication Weights")
         compute_all_weights()
         
+        if run_centrality:
+            run_centrality_phase(pull_id=pull_id, write_mode=centrality_write_mode)
+        
         logging.info("Nightly pipeline completed structurally successfully.")
         
     except Exception as e:
@@ -80,6 +118,14 @@ if __name__ == "__main__":
     parser.add_argument("--targets", nargs="+", required=True, help="List of diseases/targets")
     parser.add_argument("--pull_id", required=False, default=None, help="Campaign Sandbox Pull ID")
     parser.add_argument("--max_results", required=False, type=int, default=50, help="Number of publications to fetch")
+    parser.add_argument("--run_centrality", action="store_true", help="Run authorship centrality after publication weights")
+    parser.add_argument("--centrality_write_mode", choices=["dry-run", "local", "supabase"], default="local", help="Centrality output mode")
     args = parser.parse_args()
     
-    run_nightly_pipeline(args.targets, pull_id=args.pull_id, max_results=args.max_results)
+    run_nightly_pipeline(
+        args.targets,
+        pull_id=args.pull_id,
+        max_results=args.max_results,
+        run_centrality=args.run_centrality,
+        centrality_write_mode=args.centrality_write_mode,
+    )

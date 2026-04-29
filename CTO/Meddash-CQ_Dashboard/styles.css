@@ -100,7 +100,172 @@
 .funnel-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
 .funnel-count { width: 60px; text-align: right; font-size: 0.85em; color: #e0e0e0; font-weight: bold; }
 
-/* ── Factory output card ── */
+/* ── Factory Floor v2 modern layout ── */
+.factory-hero {
+    background: radial-gradient(circle at top left, rgba(66,165,245,0.25), transparent 32%),
+                linear-gradient(135deg, #111827 0%, #0b1018 55%, #101820 100%);
+    border: 1px solid rgba(148,163,184,0.18);
+    border-radius: 22px;
+    padding: 28px 32px;
+    margin: 4px 0 18px 0;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.35);
+}
+.factory-hero h1 {
+    margin: 6px 0 8px 0;
+    font-size: 2.45rem;
+    letter-spacing: -0.04em;
+}
+.factory-hero p {
+    max-width: 980px;
+    color: #b8c7d9;
+    font-size: 1.05rem;
+    margin: 0;
+    line-height: 1.55;
+}
+.factory-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.74rem;
+    color: #7dd3fc;
+    font-weight: 800;
+}
+.legend-card, .engine-card, .product-card, .modern-metric, .inventory-card, .stage-card, .explain-box {
+    background: linear-gradient(180deg, rgba(30,41,59,0.92), rgba(15,23,42,0.92));
+    border: 1px solid rgba(148,163,184,0.18);
+    border-radius: 16px;
+    box-shadow: 0 12px 26px rgba(0,0,0,0.22);
+}
+.legend-card {
+    min-height: 118px;
+    padding: 14px;
+    color: #b8c7d9;
+    font-size: 0.83rem;
+    line-height: 1.35;
+}
+.legend-card strong { display: block; color: #f8fafc; margin: 4px 0 6px 0; }
+.factory-dot {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    border-radius: 999px;
+    margin-right: 8px;
+    font-size: 0;
+    vertical-align: -1px;
+}
+.status-green { background:#22c55e; box-shadow:0 0 0 4px rgba(34,197,94,0.13), 0 0 16px rgba(34,197,94,0.6); }
+.status-yellow { background:#facc15; box-shadow:0 0 0 4px rgba(250,204,21,0.13), 0 0 16px rgba(250,204,21,0.45); }
+.status-red { background:#ef4444; box-shadow:0 0 0 4px rgba(239,68,68,0.13), 0 0 16px rgba(239,68,68,0.55); }
+.status-grey { background:#64748b; box-shadow:0 0 0 4px rgba(100,116,139,0.13); }
+.modern-metric {
+    min-height: 262px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+}
+.modern-metric::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+    background: #64748b;
+}
+.metric-producing::before { background: linear-gradient(90deg, #22c55e, #86efac); }
+.metric-idle::before { background: linear-gradient(90deg, #64748b, #334155); }
+.metric-kicker {
+    color: #93a4b8;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+.modern-metric h4 { margin: 10px 0 8px 0; font-size: 1.0rem; color: #f8fafc; }
+.metric-value {
+    font-size: 2.25rem;
+    color: #f8fafc;
+    font-weight: 900;
+    letter-spacing: -0.05em;
+    margin: 4px 0 12px 0;
+}
+.modern-metric p { color: #b8c7d9; font-size: 0.82rem; line-height: 1.42; margin-bottom: 14px; }
+.metric-footer { color: #7dd3fc; font-size: 0.76rem; border-top: 1px solid rgba(148,163,184,0.12); padding-top: 10px; }
+.department-header {
+    margin: 20px 0 12px 0;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: rgba(15,23,42,0.75);
+    border: 1px solid rgba(148,163,184,0.16);
+}
+.department-header h3 { margin: 0 0 4px 0; }
+.department-header p { margin: 0; color: #b8c7d9; font-size: 0.92rem; }
+.meddash-modern { border-left: 5px solid #42a5f5; }
+.cq-modern { border-left: 5px solid #66bb6a; }
+.engine-card {
+    border-top: 3px solid var(--accent);
+    min-height: 226px;
+    padding: 15px;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+}
+.engine-card:hover { transform: translateY(-2px); border-color: rgba(125,211,252,0.45); }
+.engine-status-line { color: #9fb0c3; font-size: 0.72rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.08em; }
+.engine-card h4 { color: #f8fafc; margin: 12px 0 6px 0; font-size: 1.0rem; }
+.engine-output { color: var(--accent); font-size: 0.78rem; font-weight: 800; margin-bottom: 10px; }
+.engine-card p { color: #b8c7d9; font-size: 0.8rem; line-height: 1.38; margin: 0; }
+.flow-down {
+    text-align: center;
+    color: #7dd3fc;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 14px 0;
+    animation: flow-pulse 1.8s ease-in-out infinite;
+}
+.product-card {
+    border-top: 3px solid var(--accent);
+    min-height: 178px;
+    padding: 18px;
+}
+.product-title { color:#f8fafc; font-size:1.12rem; font-weight:900; margin-bottom:6px; }
+.product-subtitle { color:var(--accent); font-size:0.85rem; font-weight:800; margin-bottom:10px; }
+.product-card p { color:#b8c7d9; font-size:0.86rem; line-height:1.45; margin:0 0 12px 0; }
+.product-footer { color:#93a4b8; font-size:0.78rem; border-top:1px solid rgba(148,163,184,0.12); padding-top:10px; }
+.stage-card {
+    min-height: 140px;
+    padding: 13px;
+    text-align: center;
+}
+.stage-auto { border-top: 3px solid #22c55e; background: linear-gradient(180deg, rgba(20,83,45,0.70), rgba(15,23,42,0.92)); }
+.stage-manual { border-top: 3px solid #f59e0b; background: linear-gradient(180deg, rgba(120,53,15,0.65), rgba(15,23,42,0.92)); }
+.stage-title { color:#f8fafc; font-size:0.9rem; font-weight:900; }
+.stage-desc { color:#b8c7d9; font-size:0.74rem; margin:8px 0; min-height:32px; }
+.stage-badge { display:inline-block; padding:3px 8px; border-radius:999px; color:#0f172a; background:#e2e8f0; font-size:0.62rem; font-weight:900; letter-spacing:0.08em; }
+.inventory-card {
+    padding: 16px;
+    min-height: 310px;
+}
+.inventory-subtitle { color:#93a4b8; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.10em; font-weight:800; }
+.inventory-card h4 { color:#f8fafc; margin:8px 0 4px 0; }
+.inventory-total { color:#7dd3fc; font-size:2rem; font-weight:900; margin-bottom:12px; }
+.inventory-row {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    border-top:1px solid rgba(148,163,184,0.10);
+    padding:7px 0;
+    color:#cbd5e1;
+    font-size:0.78rem;
+}
+.inventory-row strong { color:#f8fafc; }
+.explain-box {
+    padding: 16px 18px;
+    color: #b8c7d9;
+    line-height: 1.5;
+    margin-top: 12px;
+    border-left: 4px solid #7dd3fc;
+}
+.explain-box strong { color:#f8fafc; }
+
+/* Legacy output card classes kept for backwards compatibility */
 .output-zero {
     background: linear-gradient(135deg, #3e2723 0%, #4e342e 100%);
     border: 2px solid #f44336;

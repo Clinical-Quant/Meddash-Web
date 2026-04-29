@@ -1,6 +1,6 @@
 {
   "engine": "kol_data",
-  "timestamp": "2026-04-27T18:15:04.188327+00:00",
+  "timestamp": "2026-04-28T19:42:51.200843+00:00",
   "source": "tier1_tier2_merged",
   "targets": [
     "Esophageal Squamous Cell Carcinoma",
@@ -553,8 +553,10 @@
   "dedup_applied": true,
   "status": "partial",
   "exit_code": 1,
-  "duration_seconds": 0.34,
+  "duration_seconds": 0.57,
   "pull_id": null,
   "stdout_last_line": "",
-  "stderr_last_line": "ModuleNotFoundError: No module named 'Bio'"
+  "stderr_last_line": "ModuleNotFoundError: No module named 'psycopg2'",
+  "centrality_enabled": true,
+  "centrality_write_mode": "supabase"
 }

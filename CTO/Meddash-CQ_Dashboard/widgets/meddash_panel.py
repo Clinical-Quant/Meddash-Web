@@ -5,6 +5,7 @@ Blue department. KOL funnel, CT engine, BioCrawler, Products, Scholar.
 
 import streamlit as st
 from datetime import datetime, timedelta
+import json
 import os
 import sqlite3
 from supabase_client import sb
@@ -84,6 +85,29 @@ def render():
         scholar_count = _sqlite_count("kols", "kol_scholar_metrics") or (sb.count("kol_scholar_metrics") if sb.is_configured else 0)
         st.metric("KOLs with Scholar Metrics", scholar_count)
 
+    # ── KOL CENTRALITY ENGINE ──────────────────────────────────────────────
+    st.markdown("---")
+    st.subheader("🧠 KOL Centrality Engine")
+    st.caption(
+        "Authorship-network influence score for every KOL. This is mapped centrality, not absolute real-world authority; reliability must be read with the score."
+    )
+
+    centrality = _get_centrality_summary()
+    c_cols = st.columns(4)
+    with c_cols[0]:
+        st.metric("Centrality Scores", f"{centrality.get('scores_written', 0):,}", help="Rows populated in kol_centrality_scores for the latest run.")
+    with c_cols[1]:
+        st.metric("Graph Edges", f"{centrality.get('edge_count', 0):,}", help="Weighted coauthorship edges in the latest authorship graph.")
+    with c_cols[2]:
+        st.metric("Mapping Rate", f"{centrality.get('mapping_rate', 0):.1%}", help="Share of KOLs with mapped coauthors in the latest run.")
+    with c_cols[3]:
+        st.metric("Tier 1 Anchors", f"{centrality.get('tier1', 0):,}", help="KOLs currently classified as Tier 1 — Network Anchor within the mapped authorship graph.")
+
+    st.info(
+        f"Latest run: {centrality.get('run_id', 'not available')} · Method: {centrality.get('method_version', 'authorship_centrality_v1.0')} · Reliability is stored per KOL in Supabase.",
+        icon="🧠",
+    )
+
     # ── CT ENGINE ──────────────────────────────────────────────────────────
     st.markdown("---")
     st.subheader("🧪 Clinical Trials Engine")
@@ -141,7 +165,7 @@ def render():
     # ── PRODUCT VELOCITY ───────────────────────────────────────────────────
     st.markdown("---")
     st.subheader("📊 Product Velocity")
-    st.caption("*Briefs per week. If velocity = 0, we're not selling.*")
+    st.caption("*Briefs per week. If velocity = 0, the factory is not producing reviewable output.*")
 
     vel_cols = st.columns(3)
     brief_path = PRODUCT_PATHS.get("kol_briefs")
@@ -204,6 +228,38 @@ def _get_kol_funnel():
         data["briefed"] = 0
 
     return data
+
+
+def _get_centrality_summary():
+    """Read latest centrality engine summary and provide dashboard-safe defaults."""
+    summary_path = SQLITE_PATHS["kols"].parent / "pipeline_summaries" / "kol_centrality_summary.json"
+    data = {}
+    if summary_path.exists():
+        try:
+            data = json.loads(summary_path.read_text(encoding="utf-8"))
+        except Exception:
+            data = {}
+
+    score_dist = data.get("score_distribution", {}) or {}
+    tier_counts = score_dist.get("tier_counts", {}) or {}
+    graph_stats = data.get("graph_stats", {}) or {}
+    join_quality = data.get("join_quality", {}) or {}
+
+    scores_written = data.get("scores_written")
+    if scores_written is None and sb.is_configured:
+        scores_written = sb.count("kol_centrality_scores")
+    if scores_written is None:
+        scores_written = 0
+
+    return {
+        "scores_written": scores_written if isinstance(scores_written, int) else 0,
+        "edge_count": graph_stats.get("edge_count", 0) or 0,
+        "mapping_rate": join_quality.get("coauthor_mapping_rate", 0) or 0,
+        "tier1": tier_counts.get("Tier 1 — Network Anchor", 0) or 0,
+        "run_id": data.get("run_id", "not available"),
+        "method_version": data.get("method_version", "authorship_centrality_v1.0"),
+    }
+
 
 
 def _sqlite_count(db_key, table):

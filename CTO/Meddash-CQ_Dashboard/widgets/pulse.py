@@ -1,11 +1,12 @@
 """
 LAYER 1: THE PULSE — Top Bar Metrics
 Always-visible heartbeat of the factory.
-Shows: health, deltas, staleness, revenue funnel.
+Shows: health, deltas, staleness, and production output.
 """
 
 import streamlit as st
 from datetime import datetime, timedelta
+import json
 import os
 import sqlite3
 from supabase_client import sb
@@ -13,14 +14,15 @@ from config import SQLITE_PATHS, PRODUCT_PATHS
 
 def render():
     st.title("💗 Pulse — Factory Heartbeat")
-    st.caption("*Stale green lights are lying lights. Deltas beat totals. Revenue turns grey to green.*")
+    st.caption("*Stale green lights are lying lights. Deltas beat totals. CRM/revenue stays hidden until connected.*")
 
     # ── ROW 1: Engine Heartbeat ────────────────────────────────────────────
     st.subheader("🫀 Engine Heartbeat")
-    cols = st.columns(6)
+    cols = st.columns(7)
 
     engines = [
         ("KOL Engine", "kols"),
+        ("Centrality", "centrality_summary"),
         ("CT Engine", "trials"),
         ("BioCrawler", "biocrawler"),
         ("SEC 8K", None),     # Supabase-only
@@ -30,7 +32,9 @@ def render():
 
     for i, (name, db_key) in enumerate(engines):
         with cols[i]:
-            if db_key and db_key in SQLITE_PATHS:
+            if db_key == "centrality_summary":
+                _render_centrality_heartbeat(name)
+            elif db_key and db_key in SQLITE_PATHS:
                 db_path = SQLITE_PATHS[db_key]
                 if db_path.exists():
                     mtime = datetime.fromtimestamp(db_path.stat().st_mtime)
@@ -71,7 +75,7 @@ def render():
     # ── ROW 2: Core Metrics with Deltas ────────────────────────────────────
     st.markdown("---")
     st.subheader("📊 Core Metrics")
-    m_cols = st.columns(5)
+    m_cols = st.columns(6)
 
     # KOLs
     with m_cols[0]:
@@ -122,16 +126,18 @@ def render():
         total_ct = ct_count or sb_ct or 0
         st.metric("CT Trials", f"{total_ct:,}")
 
-    # Revenue Funnel
+    # Centrality Scores
     with m_cols[4]:
-        # Count briefs as revenue proxy
+        centrality = _get_centrality_summary()
+        st.metric("Centrality Scores", f"{centrality.get('scores_written', 0):,}", delta=f"Tier 1: {centrality.get('tier1', 0):,}")
+
+    # Production output placeholder — not revenue
+    with m_cols[5]:
         brief_path = PRODUCT_PATHS.get("kol_briefs")
         brief_count = 0
         if brief_path and brief_path.exists():
             brief_count = sum(1 for f in brief_path.iterdir() if f.is_file())
-        revenue = brief_count * 2450
-        icon = "🟢" if revenue > 0 else "⚫"
-        st.metric(f"{icon} Revenue", f"${revenue:,}", delta="First $2,450 = 🟢" if revenue == 0 else "CASH FLOWING")
+        st.metric("KOL Brief Files", f"{brief_count:,}", delta="CRM not connected")
 
     # ── ROW 3: Last Crawl Staleness ───────────────────────────────────────
     st.markdown("---")
@@ -146,6 +152,13 @@ def render():
             status = "🟢" if age_h < 6 else "🟡" if age_h < 24 else "🔴"
             staleness_data.append({"Engine": db_name, "Last Modified": mtime.strftime("%Y-%m-%d %H:%M"), "Age (hours)": f"{age_h:.1f}", "Status": status})
 
+    centrality_path = SQLITE_PATHS["kols"].parent / "pipeline_summaries" / "kol_centrality_summary.json"
+    if centrality_path.exists():
+        mtime = datetime.fromtimestamp(centrality_path.stat().st_mtime)
+        age_h = (datetime.now() - mtime).total_seconds() / 3600
+        status = "🟢" if age_h < 6 else "🟡" if age_h < 24 else "🔴"
+        staleness_data.append({"Engine": "kol_centrality", "Last Modified": mtime.strftime("%Y-%m-%d %H:%M"), "Age (hours)": f"{age_h:.1f}", "Status": status})
+
     if staleness_data:
         st.dataframe(staleness_data, use_container_width=True, hide_index=True)
 
@@ -154,6 +167,47 @@ def render():
     st.subheader("📈 Data Deltas")
     st.caption("*Totals are vanity. Deltas are decisions.*")
     st.info("Delta tracking requires a baseline snapshot. Run the dashboard daily to build history. For now, showing current totals vs last known.")
+
+
+def _get_centrality_summary():
+    summary_path = SQLITE_PATHS["kols"].parent / "pipeline_summaries" / "kol_centrality_summary.json"
+    data = {}
+    if summary_path.exists():
+        try:
+            data = json.loads(summary_path.read_text(encoding="utf-8"))
+        except Exception:
+            data = {}
+    tiers = ((data.get("score_distribution") or {}).get("tier_counts") or {})
+    return {
+        "scores_written": data.get("scores_written") or (sb.count("kol_centrality_scores") if sb.is_configured else 0),
+        "tier1": tiers.get("Tier 1 — Network Anchor", 0),
+    }
+
+
+def _render_centrality_heartbeat(name):
+    summary_path = SQLITE_PATHS["kols"].parent / "pipeline_summaries" / "kol_centrality_summary.json"
+    if not summary_path.exists():
+        st.markdown(f"⚫ **{name}**")
+        st.caption("No summary")
+        return
+    mtime = datetime.fromtimestamp(summary_path.stat().st_mtime)
+    age_h = (datetime.now() - mtime).total_seconds() / 3600
+    data = {}
+    try:
+        data = json.loads(summary_path.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    status = data.get("status", "unknown")
+    if status == "success" and age_h < 6:
+        dot = "🟢"
+    elif status == "success" and age_h < 24:
+        dot = "🟡"
+    elif status == "success":
+        dot = "🔴"
+    else:
+        dot = "⚫"
+    st.markdown(f"{dot} **{name}**")
+    st.caption(f"{data.get('scores_written', 0):,} scores · {age_h:.1f}h ago")
 
 
 def _sqlite_count(db_key, table):

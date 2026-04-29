@@ -19,6 +19,8 @@ sys.path.insert(0, str(DEVOPS_DIR))
 from paths import DB_PATHS, SUMMARY_DIR, ENGINE_PATHS
 try:
     import telegram_notifier
+    if os.environ.get("DISABLE_INTERNAL_TELEGRAM") == "1":
+        telegram_notifier = None
 except ImportError:
     telegram_notifier = None
 

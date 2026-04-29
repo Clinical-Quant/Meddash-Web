@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --background: #05070d;
+  --foreground: #e6eef8;
+  --meddash-cyan: #00d9ff;
+  --meddash-emerald: #00ff88;
+  --meddash-surface: #0b1220;
+  --meddash-surface-2: #101a2b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-meddash-cyan: var(--meddash-cyan);
+  --color-meddash-emerald: var(--meddash-emerald);
+  --color-meddash-surface: var(--meddash-surface);
+  --color-meddash-surface-2: var(--meddash-surface-2);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.fc {
+  --fc-border-color: rgba(255, 255, 255, 0.12);
+  --fc-page-bg-color: #0a1220;
+  --fc-neutral-bg-color: #0f1a2e;
+  --fc-list-event-hover-bg-color: #13213a;
+  --fc-today-bg-color: rgba(0, 217, 255, 0.1);
+  --fc-button-bg-color: #00d9ff;
+  --fc-button-border-color: #00d9ff;
+  --fc-button-text-color: #021018;
+  --fc-button-hover-bg-color: #00c3e6;
+  --fc-button-hover-border-color: #00c3e6;
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number,
+.fc .fc-toolbar-title {
+  color: #e6eef8;
+}

@@ -51,6 +51,7 @@ def render():
         ("03_BioCrawler_GTM", "biocrawler", "🎯", "biocrawler.py"),
         ("04_Product_KOL_Briefs", "kol_briefs", "📄", "generate_kol_brief.py"),
         ("05_Product_TA_Landscape", "ta_landscape", "📊", "generate_ta_landscape.py"),
+        ("10_KOL_Centrality_Engine", "kol_centrality", "🧠", "run_centrality.py"),
     ]
 
     cols = st.columns(len(engine_cards))
@@ -121,7 +122,7 @@ def render():
     sb_icon = "🟢" if supabase_status["reachable"] else "🔴"
     sb_bg = "#0a1f0a" if supabase_status["reachable"] else "#2a0a0a"
 
-    sb_cols = st.columns(4)
+    sb_cols = st.columns(5)
     with sb_cols[0]:
         st.markdown(
             f"<div style='padding:12px; border:2px solid {sb_color}; border-radius:8px; background:{sb_bg};'>"
@@ -132,7 +133,7 @@ def render():
             unsafe_allow_html=True
         )
 
-    sb_tables = [("kols", "👥 KOLs"), ("biotech_leads", "🎯 Leads"), ("trials", "🧪 Trials")]
+    sb_tables = [("kols", "👥 KOLs"), ("kol_centrality_scores", "🧠 Centrality"), ("biotech_leads", "🎯 Leads"), ("trials", "🧪 Trials")]
     for i, (tbl, label) in enumerate(sb_tables):
         with sb_cols[i + 1]:
             count = supabase_status.get("tables", {}).get(tbl, "—")
@@ -185,6 +186,7 @@ def _read_summaries():
         "kol_pipeline_summary.json": "kol_engine",
         "biocrawler_summary.json": "biocrawler",
         "ct_crawler_summary.json": "ct_engine",
+        "kol_centrality_summary.json": "kol_centrality",
     }
     for filename, key in summary_map.items():
         filepath = os.path.join(SUMMARY_DIR, filename)
@@ -298,6 +300,17 @@ def _classify_health(summaries, db_counts):
     return health
 
 
+def _centrality_scores_written():
+    """Read score count from the centrality summary without hitting Supabase."""
+    filepath = os.path.join(SUMMARY_DIR, "kol_centrality_summary.json")
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return int(data.get("scores_written") or data.get("scores_calculated") or 0)
+    except Exception:
+        return 0
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # MERMAID DIAGRAM BUILDER
 # ══════════════════════════════════════════════════════════════════════════
@@ -331,11 +344,13 @@ def _build_mermaid(engine_health, db_counts, rotation):
     bio_h = engine_health.get("biocrawler", {}).get("status", "grey")
     brief_h = engine_health.get("kol_briefs", {}).get("status", "grey")
     ta_h = engine_health.get("ta_landscape", {}).get("status", "grey")
+    centrality_h = engine_health.get("kol_centrality", {}).get("status", "grey")
 
     # DB labels with counts
     kols_count = db_counts.get("kols", 0)
     leads_count = db_counts.get("biotech_leads", 0)
     trials_count = db_counts.get("trials", 0)
+    centrality_scores = _centrality_scores_written()
 
     # Rotation label
     rot_cat = rotation.get("current_category", "—") if rotation else "—"
@@ -359,10 +374,11 @@ flowchart TB
     nightly["🔬 KOL Engine\\nnightly_scheduler.py\\n{kols_count:,} KOLs"]
     biocrawler["🎯 BioCrawler\\nbiocrawler.py\\n{leads_count:,} Leads"]
     ct_crawler["🧪 CT Engine\\nct_crawler.py\\n{trials_count:,} Trials"]
+    centrality["🧠 KOL Centrality\\nrun_centrality.py\\n{centrality_scores:,} Scores"]
   end
 
   subgraph products["📦 Products"]
-    kol_brief["📄 KOL Briefs\\n$2,450/revenue"]
+    kol_brief["📄 KOL Briefs\\nClient-ready output"]
     ta_landscape["📊 TA Landscapes\\nProduct output"]
   end
 
@@ -370,6 +386,7 @@ flowchart TB
     kols_db[("👥 meddash_kols.db\\n{kols_count:,} rows")]
     leads_db[("🎯 biocrawler_leads.db\\n{leads_count:,} rows")]
     trials_db[("🧪 ct_trials.db\\n{trials_count:,} rows")]
+    centrality_db[("🧠 Supabase centrality\\n{centrality_scores:,} score rows")]
   end
 
   subgraph devops["🛠️ DevOps"]
@@ -389,10 +406,13 @@ flowchart TB
   triggers --> ct_crawler
 
   nightly --> kols_db
+  kols_db --> centrality
+  centrality --> centrality_db
   biocrawler --> leads_db
   ct_crawler --> trials_db
 
   kols_db --> kol_brief
+  centrality_db --> kol_brief
   leads_db --> kol_brief
   trials_db --> kol_brief
   kols_db --> ta_landscape
@@ -403,6 +423,7 @@ flowchart TB
   mesh_rot -. "T2 rotation" .-> nightly
 
   nightly --> summaries
+  centrality --> summaries
   biocrawler --> summaries
   ct_crawler --> summaries
 
@@ -410,6 +431,7 @@ flowchart TB
   monitor -. "escalate" .-> workers
 
   hands --> nightly
+  hands --> centrality
   hands --> biocrawler
   hands --> ct_crawler
   workers --> monitor
@@ -418,11 +440,13 @@ flowchart TB
   style nightly fill:{_hcolor(kol_h)},stroke:{_hstroke(kol_h)},stroke-width:3px,color:#e0e0e0
   style biocrawler fill:{_hcolor(bio_h)},stroke:{_hstroke(bio_h)},stroke-width:3px,color:#e0e0e0
   style ct_crawler fill:{_hcolor(ct_h)},stroke:{_hstroke(ct_h)},stroke-width:3px,color:#e0e0e0
+  style centrality fill:{_hcolor(centrality_h)},stroke:{_hstroke(centrality_h)},stroke-width:3px,color:#e0e0e0
   style kol_brief fill:{_hcolor(brief_h)},stroke:{_hstroke(brief_h)},stroke-width:3px,color:#e0e0e0
   style ta_landscape fill:{_hcolor(ta_h)},stroke:{_hstroke(ta_h)},stroke-width:3px,color:#e0e0e0
   style kols_db fill:#1a2332,stroke:#42a5f5,stroke-width:2px,color:#e0e0e0
   style leads_db fill:#1a2332,stroke:#42a5f5,stroke-width:2px,color:#e0e0e0
   style trials_db fill:#1a2332,stroke:#42a5f5,stroke-width:2px,color:#e0e0e0
+  style centrality_db fill:#1a2332,stroke:#42a5f5,stroke-width:2px,color:#e0e0e0
   style mesh_rot fill:#1a2332,stroke:#ab47bc,stroke-width:2px,color:#e0e0e0
   style summaries fill:#1a2332,stroke:#78909c,stroke-width:2px,color:#e0e0e0
   style monitor fill:#1a2332,stroke:#00e676,stroke-width:2px,color:#e0e0e0
@@ -442,6 +466,7 @@ flowchart TB
         kols_count=kols_count,
         leads_count=leads_count,
         trials_count=trials_count,
+        centrality_scores=centrality_scores,
         rot_cat=rot_cat,
         rot_week=rot_week,
     )
@@ -572,7 +597,7 @@ def _check_supabase():
         return result
 
     # Get row counts for key tables (use actual column names per Supabase schema)
-    sb_columns = {"kols": "first_name", "biotech_leads": "company_slug", "trials": "nct_id"}
+    sb_columns = {"kols": "first_name", "kol_centrality_scores": "kol_id", "biotech_leads": "company_name", "trials": "nct_id"}
     for table, col in sb_columns.items():
         try:
             req = urllib.request.Request(

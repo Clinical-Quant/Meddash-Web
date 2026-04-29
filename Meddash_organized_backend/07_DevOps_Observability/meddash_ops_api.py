@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+"""Meddash/CQ local ops API for n8n.
+
+Purpose:
+- Keep n8n simple: Schedule Trigger -> HTTP Request -> Telegram.
+- Avoid n8n Code node sandbox, Execute Command disabled nodes, Telegram webhooks.
+- This service runs scripts locally and returns JSON over localhost.
+
+Endpoints:
+  GET /health
+  POST /telegram/test
+  POST /telegram/poll
+  POST /meddash/engine01
+  POST /meddash/engine02
+  POST /meddash/engine03
+  POST /meddash/health
+  POST /cq/detect
+  POST /cq/latest-report
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sqlite3
+import subprocess
+import sys
+import time
+import traceback
+import urllib.request
+from datetime import datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+
+HOST = "127.0.0.1"
+PORT = int(os.environ.get("MEDDASH_OPS_API_PORT", "8765"))
+
+BOT_TOKEN = "8515229822:AAGgPRuVkTSiccltsKyhsO1TqvitYSr6Geo"
+CHAT_ID = "6253013213"
+TG_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
+OFFSET_FILE = Path("/tmp/meddash_telegram_offset.txt")
+
+BASE = Path("/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend")
+SUMMARIES = BASE / "06_Shared_Datastores" / "pipeline_summaries"
+DATA = BASE / "06_Shared_Datastores"
+MEDDASH_RUNNER = BASE / "07_DevOps_Observability" / "meddash_pipeline_runner.py"
+COMMAND_POLLER = BASE / "07_DevOps_Observability" / "meddash_command_poll_once.py"
+
+CQ_BASE = Path("/mnt/c/Users/email/.gemini/antigravity/CTO/CQ_Team")
+CQ_RUNNER = CQ_BASE / "scripts" / "cq_pipeline_runner.py"
+CQ_REPORT_DIR = Path("/mnt/c/Users/email/.gemini/antigravity/CEO Notes/CQ Daily Update")
+
+
+def now() -> str:
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def run_cmd(cmd: list[str], timeout: int = 300, cwd: str | None = None) -> dict[str, Any]:
+    start = time.time()
+    try:
+        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+        return {
+            "status": "success" if p.returncode == 0 else "error",
+            "returncode": p.returncode,
+            "elapsed_seconds": round(time.time() - start, 2),
+            "stdout": p.stdout[-8000:],
+            "stderr": p.stderr[-4000:],
+            "cmd": cmd,
+        }
+    except subprocess.TimeoutExpired as e:
+        return {
+            "status": "timeout",
+            "elapsed_seconds": round(time.time() - start, 2),
+            "stdout": (e.stdout or "")[-4000:] if isinstance(e.stdout, str) else str(e.stdout)[-4000:],
+            "stderr": (e.stderr or "")[-4000:] if isinstance(e.stderr, str) else str(e.stderr)[-4000:],
+            "cmd": cmd,
+        }
+    except Exception as e:
+        return {"status": "exception", "error": str(e), "traceback": traceback.format_exc(), "cmd": cmd}
+
+
+def send_telegram(text: str, chat_id: str = CHAT_ID) -> dict[str, Any]:
+    payload = json.dumps({"chat_id": chat_id, "text": text}).encode("utf-8")
+    req = urllib.request.Request(f"{TG_API}/sendMessage", data=payload, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def table_count(db_path: Path) -> int | None:
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' LIMIT 1")
+        row = cur.fetchone()
+        if not row:
+            return None
+        cur.execute(f"SELECT COUNT(*) FROM [{row[0]}]")
+        count = cur.fetchone()[0]
+        conn.close()
+        return int(count)
+    except Exception:
+        return None
+
+
+def meddash_health() -> dict[str, Any]:
+    summaries = {}
+    for name in ["kol_pipeline", "ct_delta", "biocrawler"]:
+        f = SUMMARIES / f"{name}_summary.json"
+        if f.exists():
+            try:
+                summaries[name] = json.loads(f.read_text(encoding="utf-8"))
+            except Exception as e:
+                summaries[name] = {"status": "parse_error", "error": str(e)}
+        else:
+            summaries[name] = {"status": "missing"}
+
+    dbs = {
+        "KOL": table_count(DATA / "meddash_kols.db"),
+        "CT": table_count(DATA / "ct_trials.db"),
+        "BioCrawler": table_count(DATA / "biocrawler_leads.db"),
+    }
+    return {"status": "ok", "timestamp": now(), "summaries": summaries, "db_counts": dbs}
+
+
+def meddash_health_text() -> str:
+    h = meddash_health()
+    lines = ["📊 Meddash Health", f"Time: {h['timestamp']}", ""]
+    for k, v in h["summaries"].items():
+        lines.append(f"{k}: {v.get('status', '?')} | records={v.get('records_processed', v.get('records', '?'))} | last={v.get('timestamp', v.get('last_run', '?'))}")
+    lines.append("")
+    for k, v in h["db_counts"].items():
+        lines.append(f"{k} DB: {v if v is not None else 'ERROR'} rows")
+    return "\n".join(lines)
+
+
+def cq_latest_report() -> dict[str, Any]:
+    files = sorted(CQ_REPORT_DIR.glob("cq-daily-update-*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not files:
+        return {"status": "missing", "message": "No CQ daily report found"}
+    p = files[0]
+    text = p.read_text(encoding="utf-8", errors="replace")
+    return {"status": "ok", "path": str(p), "mtime": datetime.fromtimestamp(p.stat().st_mtime).isoformat(), "preview": text[:3500]}
+
+
+def cq_latest_text() -> str:
+    r = cq_latest_report()
+    if r["status"] != "ok":
+        return "📰 CQ Daily Update: no report found"
+    return f"📰 CQ Daily Update\nFile: {r['path']}\nModified: {r['mtime']}\n\n{r['preview']}"
+
+
+class Handler(BaseHTTPRequestHandler):
+    def _json(self, payload, status=200):
+        """Send JSON response safely.
+
+        n8n/curl/browser clients may disconnect after timeout or manual cancel while
+        an engine is still finishing. That causes BrokenPipeError during write.
+        Treat that as a client disconnect, not an Ops API crash.
+        """
+        data = json.dumps(payload, default=str).encode("utf-8")
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError):
+            print(f"Client disconnected before response was written: {self.path}")
+        return None
+
+    def log_message(self, fmt, *args):
+        sys.stderr.write("%s - %s\n" % (now(), fmt % args))
+
+    def do_GET(self):
+        if self.path == "/health":
+            return self._json({"status": "ok", "service": "meddash_ops_api", "timestamp": now()})
+        return self._json({"status": "not_found", "path": self.path}, 404)
+
+    def do_POST(self):
+        try:
+            if self.path == "/telegram/test":
+                tg = send_telegram("🧪 Meddash Ops API Telegram test OK")
+                return self._json({"status": "ok" if tg.get("ok") else "error", "telegram": tg})
+            if self.path == "/telegram/poll":
+                result = run_cmd(["python3", str(COMMAND_POLLER)], timeout=60)
+                return self._json(result)
+            if self.path == "/meddash/engine01":
+                return self._json(run_cmd(["python3", str(MEDDASH_RUNNER), "engine01"], timeout=900))
+            if self.path == "/meddash/engine02":
+                return self._json(run_cmd(["python3", str(MEDDASH_RUNNER), "engine02"], timeout=900))
+            if self.path == "/meddash/engine03":
+                return self._json(run_cmd(["python3", str(MEDDASH_RUNNER), "engine03"], timeout=900))
+            if self.path == "/meddash/health":
+                h = meddash_health()
+                tg = send_telegram(meddash_health_text())
+                h["telegram"] = tg
+                return self._json(h)
+            if self.path == "/cq/detect":
+                result = run_cmd(["python3", str(CQ_RUNNER), "detect"], timeout=240)
+                send_telegram("✅ CQ detection scripts finished via Ops API\n" + result.get("status", "?"))
+                return self._json(result)
+            if self.path == "/cq/latest-report":
+                r = cq_latest_report()
+                tg = send_telegram(cq_latest_text())
+                r["telegram"] = tg
+                return self._json(r)
+            return self._json({"status": "not_found", "path": self.path}, 404)
+        except Exception as e:
+            return self._json({"status": "exception", "error": str(e), "traceback": traceback.format_exc()}, 500)
+
+
+if __name__ == "__main__":
+    print(f"Meddash Ops API listening on http://{HOST}:{PORT}", flush=True)
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()

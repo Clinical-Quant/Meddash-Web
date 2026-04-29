@@ -1,112 +1,136 @@
+#!/usr/bin/env python3
+"""Pull CRM contact data FROM Google Sheet back into biocrawler_leads.db.
+Also syncs website/ticker updates from the sheet back to DB.
+Run this after Dr. Don fills in contact details in the Google Sheet.
+"""
 import gspread
 import sqlite3
-import re
 from oauth2client.service_account import ServiceAccountCredentials
-import os
-import sys
 
-# Constants
-CREDENTIALS_FILE = r"c:\Users\email\.gemini\antigravity\Meddash_organized_backend\03_BioCrawler_GTM\meddash-crm-api-9f2f8295332e.json"
-SPREADSHEET_NAME = "Meddash Phase 1 CRM V1.0"
-DB_PATH = r"C:\Users\email\.gemini\antigravity\Meddash_organized_backend\06_Shared_Datastores\biocrawler_leads.db"
+CREDENTIALS_FILE = "/mnt/c/Users/email/Downloads/service_account.json"
+DB_PATH = "/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/06_Shared_Datastores/biocrawler_leads.db"
+SHEET_NAME = "Biocrawler Biotech List"
 
-def get_google_sheet_client():
-    if not os.path.exists(CREDENTIALS_FILE):
-        print(f"Error: Credentials file not found at {CREDENTIALS_FILE}")
-        sys.exit(1)
+# Column mapping (0-indexed)
+COL_COMPANY = 0
+COL_WEBSITE = 1
+COL_TICKER = 2
+COL_INDICATION = 3
+COL_PHASES = 4
+COL_NCT = 5
+COL_COUNTRY = 6
+COL_TIER = 7
+COL_FUNDING = 8
+COL_HIRING = 9
+COL_DATE_ADDED = 10
+COL_CONTACT_NAME = 11
+COL_ROLE = 12
+COL_LINKEDIN = 13
+COL_EMAIL = 14
+COL_CONTACTED = 15
+COL_REPLIED = 16
+COL_MEETING = 17
+COL_SALE = 18
+COL_KANBAN = 19
+COL_FOLLOWUP = 20
+COL_NOTES = 21
 
+def slugify(name):
+    """Convert company name to slug (matches biocrawler convention)."""
+    return name.lower().strip().replace(' ', '-').replace(',', '').replace('.', '').replace('&', 'and')
+
+def main():
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, scope)
     client = gspread.authorize(creds)
-    return client
+    sh = client.open(SHEET_NAME)
+    ws = sh.sheet1
 
-def generate_company_slug(company_name):
-    """Standardizes company names into unique slugs for matching."""
-    if not company_name:
-        return "unknown"
-    slug = str(company_name).lower()
-    suffixes = [r'\binc\b', r'\bllc\b', r'\bcorp\b', r'\bltd\b', r'\bco\b', r'\bcorporation\b', r'\blimited\b']
-    for suffix in suffixes:
-        slug = re.sub(suffix, '', slug)
-    slug = re.sub(r'[^\w\s]', '', slug)
-    slug = ' '.join(slug.split())
-    return slug
+    all_vals = ws.get_all_values()
+    if len(all_vals) < 2:
+        print("No data rows in sheet (only headers). Nothing to sync.")
+        return
 
-def sync_websites_to_db():
-    print(f"Connecting to Google Sheet: {SPREADSHEET_NAME}...")
-    client = get_google_sheet_client()
+    # Skip header row
+    data_rows = all_vals[1:]
     
-    try:
-        sheet = client.open(SPREADSHEET_NAME).sheet1
-        records = sheet.get_all_values()
-    except Exception as e:
-        print(f"Error reading Google Sheet: {e}")
-        return
-
-    print(f"Connecting to local Database: {DB_PATH}...")
-    if not os.path.exists(DB_PATH):
-        print(f"Error: Database not found at {DB_PATH}")
-        return
-
     conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    cur = conn.cursor()
+    
+    crm_updated = 0
+    crm_inserted = 0
+    db_updated = 0
 
-    updates_made = 0
-
-    # Skip the header row
-    for index, row in enumerate(records):
-        if index == 0:
+    for row in data_rows:
+        if not row or not row[COL_COMPANY]:
             continue
-            
-        # Column 0 is Company, Column 1 is Website, Column 2 is Ticker
-        if len(row) > 2:  
-            company = row[0].strip()
-            website = row[1].strip()
-            ticker = row[2].strip()
+        
+        company_name = row[COL_COMPANY].strip()
+        slug = slugify(company_name)
+        
+        # Check if company exists in DB
+        cur.execute("SELECT company_slug FROM biotech_leads WHERE company_slug = ?", (slug,))
+        exists = cur.fetchone()
+        
+        # 1. Sync website/ticker back to biotech_leads
+        if exists:
+            website = row[COL_WEBSITE].strip() if len(row) > COL_WEBSITE else ''
+            ticker = row[COL_TICKER].strip() if len(row) > COL_TICKER else ''
+            if website or ticker:
+                cur.execute("""
+                    UPDATE biotech_leads 
+                    SET website_url = COALESCE(NULLIF(?, ''), website_url),
+                        ticker = COALESCE(NULLIF(?, ''), ticker)
+                    WHERE company_slug = ?
+                """, (website or None, ticker or None, slug))
+                if cur.rowcount > 0:
+                    db_updated += 1
 
-        # If they entered a website and we have a company name
-        if company and website:
-            slug = generate_company_slug(company)
+        # 2. Sync CRM contact fields back to crm_contacts table
+        contact_name = row[COL_CONTACT_NAME].strip() if len(row) > COL_CONTACT_NAME and row[COL_CONTACT_NAME].strip() else None
+        if contact_name:
+            role = row[COL_ROLE].strip() if len(row) > COL_ROLE and row[COL_ROLE].strip() else None
+            linkedin = row[COL_LINKEDIN].strip() if len(row) > COL_LINKEDIN and row[COL_LINKEDIN].strip() else None
+            email = row[COL_EMAIL].strip() if len(row) > COL_EMAIL and row[COL_EMAIL].strip() else None
+            contacted = row[COL_CONTACTED].strip() if len(row) > COL_CONTACTED and row[COL_CONTACTED].strip() else None
+            replied = row[COL_REPLIED].strip() if len(row) > COL_REPLIED and row[COL_REPLIED].strip() else None
+            meeting = row[COL_MEETING].strip() if len(row) > COL_MEETING and row[COL_MEETING].strip() else None
+            sale = row[COL_SALE].strip() if len(row) > COL_SALE and row[COL_SALE].strip() else None
+            kanban = row[COL_KANBAN].strip() if len(row) > COL_KANBAN and row[COL_KANBAN].strip() else None
+            followup = row[COL_FOLLOWUP].strip() if len(row) > COL_FOLLOWUP and row[COL_FOLLOWUP].strip() else None
+            notes = row[COL_NOTES].strip() if len(row) > COL_NOTES and row[COL_NOTES].strip() else None
+
+            cur.execute("""
+                INSERT INTO crm_contacts (
+                    company_slug, contact_name, role, linkedin_url, email,
+                    contacted_date, replied, meeting_date, sale_date,
+                    kanban_stage, next_followup_date, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(company_slug) DO UPDATE SET
+                    contact_name = excluded.contact_name,
+                    role = excluded.role,
+                    linkedin_url = excluded.linkedin_url,
+                    email = excluded.email,
+                    contacted_date = excluded.contacted_date,
+                    replied = excluded.replied,
+                    meeting_date = excluded.meeting_date,
+                    sale_date = excluded.sale_date,
+                    kanban_stage = excluded.kanban_stage,
+                    next_followup_date = excluded.next_followup_date,
+                    notes = excluded.notes
+            """, (slug, contact_name, role, linkedin, email,
+                  contacted, replied, meeting, sale, kanban, followup, notes))
             
-            # Check if this slug exists in the DB with its current website and ticker
-            cursor.execute("SELECT website_url, ticker FROM biotech_leads WHERE company_slug = ?", (slug,))
-            result = cursor.fetchone()
-            
-            if result:
-                db_website = result[0]
-                db_ticker = result[1]
-                
-                # Update logic for website
-                if website and db_website != website:
-                    try:
-                        cursor.execute(
-                            "UPDATE biotech_leads SET website_url = ?, last_updated = CURRENT_TIMESTAMP WHERE company_slug = ?",
-                            (website, slug)
-                        )
-                        updates_made += 1
-                        print(f"Updated DB for {company}: Added website {website}")
-                    except sqlite3.Error as e:
-                        print(f"Failed to update website for {company}: {e}")
-                        
-                # Update logic for ticker
-                if ticker and db_ticker != ticker:
-                    try:
-                        cursor.execute(
-                            "UPDATE biotech_leads SET ticker = ?, last_updated = CURRENT_TIMESTAMP WHERE company_slug = ?",
-                            (ticker, slug)
-                        )
-                        updates_made += 1
-                        print(f"Updated DB for {company}: Added ticker {ticker}")
-                    except sqlite3.Error as e:
-                        print(f"Failed to update ticker for {company}: {e}")
-            else:
-                 print(f"Company {company} (slug: {slug}) found in Google Sheet but not in local database. Skipping.")
+            if cur.rowcount > 0:
+                crm_updated += 1
 
     conn.commit()
     conn.close()
     
-    print("-" * 40)
-    print(f"Reverse Sync Complete: {updates_made} database rows updated.")
+    print(f"Sync complete:")
+    print(f"  DB rows updated (website/ticker): {db_updated}")
+    print(f"  CRM contacts upserted: {crm_updated}")
+    print(f"  Total rows scanned: {len(data_rows)}")
 
-if __name__ == "__main__":
-    sync_websites_to_db()
+if __name__ == '__main__':
+    main()
