@@ -1,11 +1,13 @@
 import Scene3D from "@/components/3d/Scene";
+import HeroGraphBackground from "@/components/sections/HeroGraphBackground";
 
 export default function Hero() {
   return (
     <section className="relative overflow-hidden min-h-[78vh] flex items-center px-6 md:px-10">
       <Scene3D />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-[#05070d]/50 to-[#05070d]" />
-      <div className="relative max-w-4xl">
+      <HeroGraphBackground />
+      <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-[#05070d]/60 to-[#05070d]" />
+      <div className="relative z-20 max-w-4xl">
         <p className="text-meddash-cyan tracking-[0.2em] uppercase text-xs md:text-sm mb-4">Meddash.ai</p>
         <h1 className="text-4xl md:text-6xl font-semibold leading-tight text-white">
           Therapeutic Intelligence for Biotech Teams
