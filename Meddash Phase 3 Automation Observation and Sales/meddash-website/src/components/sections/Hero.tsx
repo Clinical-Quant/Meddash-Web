@@ -1,5 +1,13 @@
+"use client";
+
 import Scene3D from "@/components/3d/Scene";
 import HeroGraphBackground from "@/components/sections/HeroGraphBackground";
+
+function trackEvent(name: string) {
+  if (typeof window !== "undefined" && typeof (window as Window & { gtag?: (...args: unknown[]) => void }).gtag === "function") {
+    (window as Window & { gtag?: (...args: unknown[]) => void }).gtag?.("event", name);
+  }
+}
 
 export default function Hero() {
   return (
@@ -16,8 +24,20 @@ export default function Hero() {
           KOL intelligence, biotech catalyst tracking, and clinical-trial search — unified into one high-signal decision layer.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <a href="#lead" className="rounded-xl bg-meddash-cyan text-black px-5 py-3 font-semibold hover:opacity-90">Request Brief</a>
-          <a href="#calendar" className="rounded-xl border border-meddash-emerald/70 text-meddash-emerald px-5 py-3 font-semibold hover:bg-meddash-emerald/10">Explore Catalysts</a>
+          <a
+            href="#lead"
+            onClick={() => trackEvent("request_brief_click")}
+            className="rounded-xl bg-meddash-cyan text-black px-5 py-3 font-semibold hover:opacity-90"
+          >
+            Request Brief
+          </a>
+          <a
+            href="#calendar"
+            onClick={() => trackEvent("explore_catalysts_click")}
+            className="rounded-xl border border-meddash-emerald/70 text-meddash-emerald px-5 py-3 font-semibold hover:bg-meddash-emerald/10"
+          >
+            Explore Catalysts
+          </a>
         </div>
       </div>
     </section>

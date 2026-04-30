@@ -7,6 +7,8 @@ export default function Header() {
           <a href="#features" className="hover:text-meddash-cyan">Features</a>
           <a href="#calendar" className="hover:text-meddash-cyan">Calendar</a>
           <a href="#enterprise" className="hover:text-meddash-cyan">Enterprise</a>
+          <a href="/blog" className="hover:text-meddash-cyan">Blog</a>
+          <a href="/services/kol-intelligence-brief" className="hover:text-meddash-cyan">Services</a>
           <a href="#lead" className="hover:text-meddash-cyan">Contact</a>
         </div>
       </nav>

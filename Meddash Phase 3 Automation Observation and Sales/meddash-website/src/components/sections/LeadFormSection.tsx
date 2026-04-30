@@ -18,6 +18,9 @@ export default function LeadFormSection() {
     });
 
     if (res.ok) {
+      if (typeof window !== "undefined" && typeof (window as Window & { gtag?: (...args: unknown[]) => void }).gtag === "function") {
+        (window as Window & { gtag?: (...args: unknown[]) => void }).gtag?.("event", "register_submit");
+      }
       setStatus("Thanks — we received your request.");
       form.reset();
     } else {
