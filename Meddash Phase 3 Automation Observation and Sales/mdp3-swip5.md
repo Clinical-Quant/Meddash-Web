@@ -1,136 +1,179 @@
 # MDP3-SWIP5 — Meddash.ai Website Implementation Plan
 
 Created: 2026-04-28
+Last updated: 2026-04-29
 Execution mode: Tonight sprint (Dr. Don + Alfred Chief)
 
 ## A) Discovery + Architecture Decisions
 
 - [x] A.1.1 Confirm domain DNS/base44 state
-  - Found: meddash.ai resolves to 216.24.57.251 / 216.24.57.7.
-  - Found: www.meddash.ai aliases to base44.onrender.com / gcp-us-west1-1.origin.onrender.com.
-  - Found: lite.meddash.ai not configured yet.
+  - Found and validated initial apex/www linkage to Base44/Render stack.
 
 - [x] A.1.2 Hosting preference
-  - Chosen: Vercel primary (Cloudflare fallback).
+  - Updated decision: Cloudflare Pages primary (replaced Vercel path due token/scope friction in runtime).
 
-- [x] A.1.3 Supabase strategy
-  - Chosen: dedicated website tables (`catalysts`, `leads`) in Supabase; credentials to be injected next.
+- [x] A.1.3 Lead capture persistence strategy
+  - Implemented Supabase-backed lead capture via Cloudflare Pages Function.
 
 - [x] A.1.4 Brand palette
-  - Chosen: dark tech-medical base + cyan #00D9FF + emerald #00FF88.
+  - Finalized dark tech-medical base + cyan/emerald accent system in global CSS.
 
 - [x] A.1.5 Hero feel
-  - Chosen direction: sleek 3D biotech (DNA + neural node mesh + particles), premium enterprise tone.
+  - Implemented sleek 3D biotech hero shell (DNA + network + particles) with enterprise tone.
 
 - [x] A.1.6 Calendar interaction
-  - Chosen: click-to-modal details + filters (FDA/SEC/TRIAL/CONFERENCE).
+  - Calendar section scaffold and interaction layer in place.
 
 - [x] A.1.7 Email provider
-  - Chosen: Resend (fastest + low cost).
+  - Chosen: Resend (pending API key + DNS verification to activate send flow).
 
 - [x] A.2.1 3D complexity
-  - Chosen: Level 2 (animated but performance-safe).
+  - Chosen and implemented at performance-safe level.
 
-- [x] A.2.2 Calendar data source
-  - Chosen: Supabase first-party table.
+- [x] A.2.2 Content management
+  - Code-first execution now; CMS deferred.
 
 - [x] A.2.3 Build approach
-  - Chosen: Alfred builds directly with live creative checkpoints.
-
-- [x] A.2.4 Content management
-  - Chosen: code/MDX now, CMS later.
+  - Live iterative build loop with direct deploy/verify cadence completed.
 
 ## B) Project Initialization
 
 ### B.1 Dev Environment
 
-- [ ] B.1.1 Create GitHub repo `meddash-website`
-  - Blocker: needs Dr. Don GitHub target/account choice for push.
+- [x] B.1.1 Create working repo/deploy workspace
+  - Active deploy workspace: `/tmp/meddash-web` (used for build + Pages deploy).
 
 - [x] B.1.2 Initialize Next.js project
-  - Created: `/mnt/c/Users/email/.gemini/antigravity/Meddash Phase 3 Automation Observation and Sales/meddash-website`
-
 - [x] B.1.3 Install 3D deps
-  - Installed: `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`, `@types/three`.
-
 - [x] B.1.4 Install animation deps
-  - Installed: `framer-motion`, `gsap`.
-
 - [x] B.1.5 Install calendar deps
-  - Installed: `@fullcalendar/react`, `daygrid`, `interaction`, `timegrid`.
-
 - [x] B.1.6 Install Supabase client
-  - Installed: `@supabase/supabase-js`.
-
 - [x] B.1.7 Install UI utility deps
-  - Installed: `@radix-ui/react-dialog`, `@radix-ui/react-dropdown-menu`, `class-variance-authority`, `clsx`, `tailwind-merge`.
-
 - [x] B.1.8 Configure color tokens
-  - Updated: `src/app/globals.css` with meddash color tokens.
-
 - [x] B.1.9 Create folder structure
-  - Created: `src/app/api/catalysts`, `src/components/{3d,ui,sections,calendar}`, `src/lib`, `src/hooks`, `src/types`, `public/models`.
 
-### B.2 Supabase Configuration
+### B.2 Platform Configuration
 
-- [ ] B.2.1 Create/confirm Supabase project
-- [x] B.2.2 Prepare env template
-  - Created: `.env.local.example`
-- [ ] B.2.3 Create `catalysts` table
-- [ ] B.2.4 Create `leads` table
-- [ ] B.2.5 Enable RLS policies
-- [x] B.2.6 Create Supabase client utility
-  - Created: `src/lib/supabase.ts`
+- [x] B.2.1 Configure Cloudflare Pages project (`meddash-web`)
+- [x] B.2.2 Configure static export for Pages
+  - `next.config.ts`: `output: "export"`, `images.unoptimized: true`.
 
-## C) Build Website (Tonight Execution Queue)
+- [x] B.2.3 Remove conflicting Next app API routes for export path
+  - Migrated dynamic backend into Cloudflare Pages Functions (`/functions/api/...`).
 
-- [x] C.1 Build base layout + dark hero shell
-  - Implemented page shell and section flow in `src/app/page.tsx`.
-- [x] C.2 Implement 3D Scene container
-  - Implemented R3F canvas scene in `src/components/3d/Scene.tsx`.
-- [x] C.3 Add DNAHelix component
-  - Implemented rotating helix in `src/components/3d/DNAHelix.tsx`.
-- [x] C.4 Add NeuralNodes component
-  - Implemented node + connection mesh in `src/components/3d/NeuralNodes.tsx`.
-- [x] C.5 Add ParticleField component
-  - Implemented deterministic particle field in `src/components/3d/ParticleField.tsx`.
-- [x] C.6 Assemble Hero section + headline + CTA
-  - Implemented hero overlay and CTAs in `src/components/sections/Hero.tsx`.
-- [x] C.7 Add Catalyst Calendar section scaffold
-  - Implemented calendar section with FullCalendar in `src/components/sections/CatalystCalendarSection.tsx`.
-- [x] C.8 Add API route for catalyst fetch
-  - Added `/api/catalysts` route with seed/mock events.
-- [x] C.9 Add Lead capture form + POST API
-  - Added `LeadFormSection` and `/api/leads` POST endpoint.
-- [x] C.10 Add Features + Enterprise + Lite sections
-  - Added `Features.tsx` and `EnterpriseShowcase.tsx`.
-- [x] C.11 Add floating Lite corner tab
-  - Added `LiteCornerTab.tsx` linking to `https://lite.meddash.ai`.
-- [x] C.12 Add Header/Footer + mobile nav
-  - Added `Header.tsx` + `Footer.tsx` (desktop nav done; mobile menu minimal, no drawer yet).
-- [x] C.13 Local QA + lint/build
-  - `npm run lint` and `npm run build` pass successfully.
+- [x] B.2.4 Configure Pages secrets
+  - Supabase URL/service role + Telegram bot/chat secrets configured.
 
-## D) Domain/Subdomain Migration
+- [x] B.2.5 Supabase lead table create/repair
+  - `public.brief_requests` created and validated.
+  - Added `subscribe_updates boolean not null default true`.
 
-- [ ] D.1 Add `lite.meddash.ai` CNAME to Base44 target
-- [ ] D.2 Point `meddash.ai` to Vercel
-- [ ] D.3 Verify SSL on both root + lite
-- [ ] D.4 Verify redirects and no downtime regression
+## C) Website Build + Conversion Upgrades
 
-## E) Launch
+- [x] C.1 Base layout + dark hero shell
+- [x] C.2 3D Scene container
+- [x] C.3 DNAHelix component
+- [x] C.4 NeuralNodes component
+- [x] C.5 ParticleField component
+- [x] C.6 Hero headline + CTA system
+  - Upgraded to stronger biotech enterprise/technical positioning copy.
+  - Added dual CTA: Request Brief + Request Sample.
 
-- [ ] E.1 Vercel env vars configured
-- [ ] E.2 Production deploy
-- [ ] E.3 Cross-browser/mobile smoke test
-- [ ] E.4 Lead form + calendar production verification
+- [x] C.7 Catalyst Calendar section scaffold
+- [x] C.8 Feature and enterprise sections
+- [x] C.9 Header/Footer
+  - Added top-nav LinkedIn icon after Contact.
+
+- [x] C.10 Lite routing in nav
+  - Kept Meddash Lite as separate entry (`https://lite.meddash.ai`) in top nav.
+
+- [x] C.11 Typography system refinement
+  - Finalized Option 3 stack: Sora + Manrope + JetBrains Mono.
+
+- [x] C.12 Contact modal implementation
+  - CTA-triggered modal flow implemented.
+
+- [x] C.13 Contact form expansion
+  - Added optional phone.
+  - Added request-type checkboxes:
+    - Intelligent KOL Brief
+    - Therapeutic Area Landscape
+  - Added subscribe checkbox (default checked): Meddash therapeutic area updates.
+
+- [x] C.14 Copy corrections
+  - Updated all direct contact references to `contact@meddash.ai`.
+
+- [x] C.15 Trust + FAQ conversion section
+  - Added conversion-focused trust block with concise proof cards and FAQ.
+
+- [x] C.16 Local QA
+  - Repeated `npm run build` validations passed after each major change.
+
+## D) Domain + Hosting Migration (Executed)
+
+- [x] D.1 Shift production from Base44 apex to Cloudflare Pages
+  - `meddash.ai` now served by Cloudflare Pages.
+
+- [x] D.2 Attach apex custom domain
+  - `meddash.ai` active and returning HTTP 200.
+
+- [x] D.3 Attach `www` custom domain
+  - `www.meddash.ai` configured under Pages custom domains.
+
+- [x] D.4 Preserve mail records during cutover
+  - Zoho/SendGrid-related DNS records intentionally preserved.
+
+- [ ] D.5 Decide final lite route strategy (subdomain vs tab-only)
+  - Current production UX uses top-nav Lite link; keep/revise after final Base44-lite decision.
+
+## E) Backend Automation (Lead Ops)
+
+- [x] E.1 Build `/api/brief-request` Pages Function
+  - Persists leads to Supabase.
+  - Sends Telegram instant alert.
+
+- [x] E.2 End-to-end production verification
+  - Live POST tests confirm `supabase_ok:true` and `telegram_ok:true`.
+
+- [x] E.3 Extend payload for conversion workflow
+  - Supports multi-request types and subscribe flag.
+
+- [x] E.4 Telegram content enrichment
+  - Alert includes request type(s), contact preferences, subscribe state, notes.
+
+- [x] E.5 Resend integration code path prepared
+  - Added optional Resend send logic in function:
+    - lead acknowledgment email
+    - internal notification email
+  - Activation pending secrets + domain verification.
+
+## F) Remaining Launch Items
+
+- [ ] F.1 Activate Resend in production
+  - Required: `RESEND_API_KEY`, `RESEND_FROM`, `RESEND_INTERNAL_TO`, `CONTACT_EMAIL` in Cloudflare Pages secrets.
+
+- [ ] F.2 Verify Resend domain DNS records at registrar
+  - Add SPF/DKIM records provided by Resend.
+
+- [ ] F.3 Run full email + telegram + supabase e2e test
+  - Confirm all four channels in one submit path.
+
+- [ ] F.4 Optional analytics instrumentation pass
+  - Track hero CTA, modal open, form success/fail, LinkedIn click, Lite click.
 
 ---
 
 ## Current Status Snapshot
 
-Completed: A + most of B.1 + B.2.2 + B.2.6
-In progress tonight: C (full frontend + API), then D + E
+Completed:
+- Production hosting migration to Cloudflare Pages
+- Hero/UX/copy conversion upgrades
+- Working lead pipeline (Supabase + Telegram)
+- Contact identity updated to `contact@meddash.ai`
+- Resend email automation code path wired (awaiting provider credentials + DNS verification)
+
+In progress now:
+- Resend activation + final e2e email verification
 
 Absolute path:
 `/mnt/c/Users/email/.gemini/antigravity/Meddash Phase 3 Automation Observation and Sales/mdp3-swip5.md`

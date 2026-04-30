@@ -1,3 +1,5 @@
+import os
+import socket
 import time
 from typing import List, Dict, Any
 from Bio import Entrez
@@ -5,6 +7,10 @@ from Bio import Entrez
 # Always tell NCBI who you are when using E-utilities
 # In production, replace this with your actual institutional or developer email
 Entrez.email = "meddash_developer@example.com"
+
+# Scheduled runs must not hang forever on NCBI E-utilities. Bio.Entrez uses
+# urllib underneath, so a process-wide socket timeout is the simplest safe guard.
+socket.setdefaulttimeout(int(os.getenv("MEDDASH_PUBMED_TIMEOUT", "20")))
 
 # It's also highly recommended to use an API key for higher rate limits (10 requests/sec instead of 3).
 # Entrez.api_key = "YOUR_NCBI_API_KEY" 

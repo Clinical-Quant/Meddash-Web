@@ -282,7 +282,12 @@ def _classify_health(summaries, db_counts):
         elif status_val in ("success", "active", "api", "deep", "all"):
             health[key] = {"status": "green", "detail": "healthy"}
             has_any = True
-        elif status_val in ("idle", "partial"):
+        elif status_val == "partial":
+            # Partial means the engine produced output but did not complete cleanly;
+            # render as yellow so it is visible instead of hiding as grey/idle.
+            health[key] = {"status": "yellow", "detail": "partial"}
+            has_any = True
+        elif status_val == "idle":
             health[key] = {"status": "grey", "detail": status_val}
             has_any = True
         else:

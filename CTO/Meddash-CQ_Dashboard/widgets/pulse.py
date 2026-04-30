@@ -121,7 +121,7 @@ def render():
 
     # CT Trials
     with m_cols[3]:
-        ct_count = _sqlite_count("trials", "ct_trials")
+        ct_count = _sqlite_count("trials", "trials")
         sb_ct = sb.count("trials") if sb.is_configured else -1
         total_ct = ct_count or sb_ct or 0
         st.metric("CT Trials", f"{total_ct:,}")

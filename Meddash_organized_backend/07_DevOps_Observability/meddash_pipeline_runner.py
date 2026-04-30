@@ -57,9 +57,12 @@ def run_engine(name, script_dir, command):
         return {'engine': name, 'status': 'error', 'error': str(e)}
 
 def engine01():
+    # Scheduled/Ops API KOL mode must be bounded. The full KOL crawl can still
+    # be run manually with nightly_scheduler.py defaults, but the daily pipeline
+    # needs a predictable completion window for dashboard freshness and n8n.
     return run_engine('KOL', 
         os.path.join(MEDDASH_ROOT, '01_KOL_Data_Engine'),
-        'python3 nightly_scheduler.py')
+        'python3 nightly_scheduler.py --max-targets 5 --max-results 5 --skip-disambiguation --skip-weights --skip-centrality --json-summary')
 
 def engine02():
     return run_engine('CT_Delta',

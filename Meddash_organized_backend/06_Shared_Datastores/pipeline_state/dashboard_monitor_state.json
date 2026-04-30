@@ -1,15 +1,56 @@
 {
-  "last_check": "2026-04-27T05:53:00Z",
-  "last_status": "initialized",
+  "last_check": "2026-04-29T16:33:16.377275+00:00",
+  "last_status": "degraded",
+  "dashboard_url": "http://localhost:5090",
+  "streamlit_health": "ok",
+  "auto_refresh": "wired_in_app_py_browser_meta_refresh",
   "db_counts": {
     "kols": 8298,
-    "biotech_leads": 651,
-    "trials": 100
+    "biotech_leads": 658,
+    "trials": 1005
   },
-  "dashboard_url": "http://localhost:5090",
-  "streamlit_pid": 27642,
+  "summary_freshness": [
+    {
+      "file": "biocrawler_summary.json",
+      "status": "success",
+      "timestamp": "2026-04-28T16:20:43.445039",
+      "mtime": "2026-04-28T20:20:43.115618+00:00",
+      "age_hours": 20.21
+    },
+    {
+      "file": "ct_crawler_summary.json",
+      "status": "success",
+      "timestamp": "2026-04-28T19:43:29.081851+00:00",
+      "mtime": "2026-04-28T19:43:29.027770+00:00",
+      "age_hours": 20.83
+    },
+    {
+      "file": "kol_centrality_summary.json",
+      "status": "success",
+      "timestamp": "2026-04-28T07:03:20.116998+00:00",
+      "mtime": "2026-04-28T07:03:20.058297+00:00",
+      "age_hours": 33.5
+    },
+    {
+      "file": "kol_pipeline_summary.json",
+      "status": "partial",
+      "timestamp": "2026-04-28T19:42:51.200843+00:00",
+      "mtime": "2026-04-28T19:42:50.900089+00:00",
+      "age_hours": 20.84
+    },
+    {
+      "file": "test_summary.json",
+      "status": "success",
+      "timestamp": "2026-04-26T03:05:13.259580+00:00",
+      "mtime": "2026-04-26T03:05:13.587198+00:00",
+      "age_hours": 85.47
+    }
+  ],
   "issues_created": 0,
-  "self_heals": 0,
-  "dashboard_health": "ok",
-  "summaries_fresh": true
+  "self_heals": 1,
+  "notes": [
+    "state was stale since 2026-04-27 before this fix",
+    "Pulse widget local CT table corrected from ct_trials to trials",
+    "app.py now wires REFRESH_SECONDS into browser refresh"
+  ]
 }

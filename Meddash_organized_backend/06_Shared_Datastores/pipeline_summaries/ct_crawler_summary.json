@@ -1,12 +1,12 @@
 {
   "engine": "ct_data",
-  "timestamp": "2026-04-28T19:43:29.081851+00:00",
+  "timestamp": "2026-04-29T17:02:26.378668+00:00",
   "mode": "delta",
   "query": null,
   "hours": 24,
   "status": "success",
-  "trials_saved": 1861,
+  "trials_saved": 2452,
   "trials_skipped": 0,
-  "pages_fetched": 19,
-  "duration_seconds": 35.99
+  "pages_fetched": 25,
+  "duration_seconds": 122.51
 }

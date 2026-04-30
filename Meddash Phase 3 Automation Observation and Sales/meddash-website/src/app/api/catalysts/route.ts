@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "edge";
+
 const mockData = [
   { id: "1", ticker: "VRTX", title: "PDUFA decision window", event_type: "FDA", event_date: "2026-05-12", description: "Regulatory catalyst" },
   { id: "2", ticker: "MRNA", title: "8-K earnings guidance update", event_type: "SEC_8K", event_date: "2026-05-15", description: "Filing event" },

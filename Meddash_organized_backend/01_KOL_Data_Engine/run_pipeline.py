@@ -64,7 +64,15 @@ def run_centrality_phase(pull_id: str = None, write_mode: str = "local"):
     return result.returncode
 
 
-def run_nightly_pipeline(target_diseases: list, pull_id: str = None, max_results: int = 50, run_centrality: bool = False, centrality_write_mode: str = "local"):
+def run_nightly_pipeline(
+    target_diseases: list,
+    pull_id: str = None,
+    max_results: int = 50,
+    run_centrality: bool = False,
+    centrality_write_mode: str = "local",
+    run_disambiguation_phase: bool = True,
+    run_weights_phase: bool = True,
+):
     logging.info(f"Starting pipeline. Targets: {target_diseases}")
     if pull_id:
          logging.info(f"Using Campaign Sandbox mode with Pull ID: {pull_id}")
@@ -98,11 +106,17 @@ def run_nightly_pipeline(target_diseases: list, pull_id: str = None, max_results
             if os.path.exists(temp_json):
                 os.remove(temp_json)
         
-        logging.info("Phase 3: Running Disambiguation")
-        run_disambiguation(pull_id=pull_id)
+        if run_disambiguation_phase:
+            logging.info("Phase 3: Running Disambiguation")
+            run_disambiguation(pull_id=pull_id)
+        else:
+            logging.info("Phase 3: Skipping Disambiguation for bounded scheduled run")
         
-        logging.info("Phase 4: Computing Publication Weights")
-        compute_all_weights()
+        if run_weights_phase:
+            logging.info("Phase 4: Computing Publication Weights")
+            compute_all_weights()
+        else:
+            logging.info("Phase 4: Skipping Publication Weights for bounded scheduled run")
         
         if run_centrality:
             run_centrality_phase(pull_id=pull_id, write_mode=centrality_write_mode)
@@ -120,6 +134,8 @@ if __name__ == "__main__":
     parser.add_argument("--max_results", required=False, type=int, default=50, help="Number of publications to fetch")
     parser.add_argument("--run_centrality", action="store_true", help="Run authorship centrality after publication weights")
     parser.add_argument("--centrality_write_mode", choices=["dry-run", "local", "supabase"], default="local", help="Centrality output mode")
+    parser.add_argument("--skip_disambiguation", action="store_true", help="Skip full-DB KOL disambiguation for bounded scheduled runs")
+    parser.add_argument("--skip_weights", action="store_true", help="Skip full-DB publication weight recomputation for bounded scheduled runs")
     args = parser.parse_args()
     
     run_nightly_pipeline(
@@ -128,4 +144,6 @@ if __name__ == "__main__":
         max_results=args.max_results,
         run_centrality=args.run_centrality,
         centrality_write_mode=args.centrality_write_mode,
+        run_disambiguation_phase=not args.skip_disambiguation,
+        run_weights_phase=not args.skip_weights,
     )

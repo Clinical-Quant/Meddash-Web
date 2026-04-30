@@ -105,7 +105,15 @@ def get_tier1_targets() -> list:
 
 # ── Pipeline Execution ────────────────────────────────────────────────────
 
-def run_pipeline(targets: list, max_results: int = 50, pull_id: str = None, run_centrality: bool = True, centrality_write_mode: str = "supabase") -> dict:
+def run_pipeline(
+    targets: list,
+    max_results: int = 50,
+    pull_id: str = None,
+    run_centrality: bool = True,
+    centrality_write_mode: str = "supabase",
+    run_disambiguation: bool = True,
+    run_weights: bool = True,
+) -> dict:
     """Execute the KOL pipeline via run_pipeline.py.
     
     Returns dict with: exit_code, stdout, stderr, duration_seconds
@@ -116,6 +124,10 @@ def run_pipeline(targets: list, max_results: int = 50, pull_id: str = None, run_
     cmd += ["--max_results", str(max_results)]
     if run_centrality:
         cmd += ["--run_centrality", "--centrality_write_mode", centrality_write_mode]
+    if not run_disambiguation:
+        cmd += ["--skip_disambiguation"]
+    if not run_weights:
+        cmd += ["--skip_weights"]
     if pull_id:
         cmd += ["--pull_id", pull_id]
     
@@ -185,6 +197,10 @@ def main():
         help="Max PubMed results per target (default: 50)"
     )
     parser.add_argument(
+        "--max-targets", type=int, default=int(os.getenv("MEDDASH_KOL_MAX_TARGETS", "0")),
+        help="Limit number of targets for bounded scheduled runs (default: 0 = no limit; env MEDDASH_KOL_MAX_TARGETS)"
+    )
+    parser.add_argument(
         "--pull-id", type=str, default=None,
         help="Campaign Sandbox Pull ID for tracking"
     )
@@ -199,6 +215,14 @@ def main():
     parser.add_argument(
         "--skip-centrality", action="store_true",
         help="Skip automatic authorship centrality after KOL pull"
+    )
+    parser.add_argument(
+        "--skip-disambiguation", action="store_true",
+        help="Skip full-DB disambiguation for bounded scheduled runs"
+    )
+    parser.add_argument(
+        "--skip-weights", action="store_true",
+        help="Skip full-DB publication weight recomputation for bounded scheduled runs"
     )
     parser.add_argument(
         "--centrality-write-mode", choices=["dry-run", "local", "supabase"], default="supabase",
@@ -236,6 +260,19 @@ def main():
         source = "tier1_tier2_merged"
         dedup_applied = len(targets) == len(tier1)  # dedup applied if rotation was already covered
         log.info(f"T1+T2 targets: {targets} (source: {source}, dedup: {dedup_applied})")
+    
+    # ── Scheduled-run bounding ─────────────────────────────────────────
+    # BioCrawler can supply hundreds of targets. That is appropriate for a
+    # manual/deep KOL crawl, but it is not safe for the n8n/Ops API daily path.
+    # `--max-targets` keeps scheduled verification runs within the runner guard
+    # without removing the ability to run the full crawl manually.
+    original_target_count = len(targets)
+    if args.max_targets and args.max_targets > 0 and len(targets) > args.max_targets:
+        targets = targets[:args.max_targets]
+        log.info(
+            f"Bounded scheduled KOL run: limited targets from {original_target_count} "
+            f"to {len(targets)} via --max-targets={args.max_targets}"
+        )
     
     # ── Dry Run ────────────────────────────────────────────────────────
     
@@ -278,6 +315,8 @@ def main():
         pull_id=args.pull_id,
         run_centrality=not args.skip_centrality,
         centrality_write_mode=args.centrality_write_mode,
+        run_disambiguation=not args.skip_disambiguation,
+        run_weights=not args.skip_weights,
     )
     duration = round(time.time() - start_time, 2)
     

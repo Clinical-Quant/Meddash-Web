@@ -33,6 +33,62 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@keyframes hero-graph-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-0.4%, -0.6%, 0) scale(1.01); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes hero-pulse-a {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+@keyframes hero-pulse-b {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.95; }
+}
+
+@keyframes hero-pulse-c {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+}
+
+@keyframes hero-scanline {
+  0% { transform: translateY(-110%); }
+  100% { transform: translateY(110%); }
+}
+
+.hero-graph-drift {
+  animation: hero-graph-drift 26s ease-in-out infinite;
+}
+
+.hero-pulse-a {
+  animation: hero-pulse-a 4.2s ease-in-out infinite;
+}
+
+.hero-pulse-b {
+  animation: hero-pulse-b 5.4s ease-in-out infinite;
+}
+
+.hero-pulse-c {
+  animation: hero-pulse-c 6.2s ease-in-out infinite;
+}
+
+.hero-scanline {
+  animation: hero-scanline 11s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-graph-drift,
+  .hero-pulse-a,
+  .hero-pulse-b,
+  .hero-pulse-c,
+  .hero-scanline {
+    animation: none !important;
+  }
+}
+
 .fc {
   --fc-border-color: rgba(255, 255, 255, 0.12);
   --fc-page-bg-color: #0a1220;

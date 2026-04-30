@@ -449,7 +449,7 @@ def _get_engine_status():
             elif age_hours < 24:
                 status[db_name] = "yellow"
             else:
-                status[db_name] = "grey"
+                status[db_name] = "red"
         else:
             status[db_name] = "red"
 

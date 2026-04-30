@@ -1,0 +1,3121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MDP3 Architecture Atlas — Meddash + Clinical Quant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+:root {
+  --bg:#020617; --panel:#0f172acc; --panel2:#111827d9; --line:#1e293b; --muted:#94a3b8; --text:#e5f0ff;
+  --cyan:#22d3ee; --emerald:#34d399; --violet:#a78bfa; --amber:#fbbf24; --rose:#fb7185; --orange:#fb923c; --blue:#60a5fa;
+  --cyanbg:rgba(8,51,68,.45); --emeraldbg:rgba(6,78,59,.42); --violetbg:rgba(76,29,149,.4); --amberbg:rgba(120,53,15,.34); --rosebg:rgba(136,19,55,.38); --orangebg:rgba(124,45,18,.36);
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:radial-gradient(circle at 15% 5%,rgba(34,211,238,.16),transparent 28%),radial-gradient(circle at 85% 15%,rgba(167,139,250,.18),transparent 26%),radial-gradient(circle at 50% 90%,rgba(52,211,153,.12),transparent 28%),var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;}
+body:before{content:"";position:fixed;inset:0;background-image:linear-gradient(rgba(30,41,59,.45) 1px,transparent 1px),linear-gradient(90deg,rgba(30,41,59,.45) 1px,transparent 1px);background-size:42px 42px;pointer-events:none;z-index:-2}
+.orb{position:fixed;width:420px;height:420px;border-radius:999px;filter:blur(70px);opacity:.12;animation:float 12s ease-in-out infinite;z-index:-1} .orb.a{background:var(--cyan);left:-120px;top:80px} .orb.b{background:var(--violet);right:-120px;top:360px;animation-delay:-4s} @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-35px)}}
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh} aside{position:sticky;top:0;height:100vh;overflow:auto;border-right:1px solid var(--line);background:rgba(2,6,23,.75);backdrop-filter:blur(18px);padding:22px} main{padding:28px;max-width:1600px;width:100%;}
+.brand{display:flex;gap:12px;align-items:center;margin-bottom:22px} .logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,var(--cyan),var(--violet));box-shadow:0 0 28px rgba(34,211,238,.32)} .brand h1{font-size:14px;line-height:1.15;margin:0} .brand p{font-size:11px;color:var(--muted);margin:3px 0 0}
+.search{width:100%;border:1px solid var(--line);border-radius:12px;background:#0f172a;color:var(--text);padding:11px 12px;font-family:JetBrains Mono,monospace;font-size:12px;margin:12px 0 18px;outline:none} .nav a{display:block;color:#cbd5e1;text-decoration:none;font-size:12px;padding:9px 10px;border-radius:10px;margin:3px 0} .nav a:hover{background:rgba(34,211,238,.09);color:white} .nav .group{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.12em;margin:18px 0 8px}
+.hero{border:1px solid rgba(34,211,238,.25);border-radius:28px;padding:30px;background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(8,47,73,.35));box-shadow:0 24px 80px rgba(0,0,0,.35);position:relative;overflow:hidden} .hero:after{content:"";position:absolute;right:-80px;top:-80px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.24),transparent 65%)}
+.eyebrow{font-family:JetBrains Mono,monospace;color:var(--cyan);font-size:12px;text-transform:uppercase;letter-spacing:.18em} h1.big{font-size:clamp(34px,5vw,72px);letter-spacing:-.06em;line-height:.95;margin:12px 0} .hero p{max-width:980px;color:#cbd5e1;font-size:16px;line-height:1.65} .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px} .btn{border:1px solid var(--line);background:#0f172a;color:white;text-decoration:none;padding:11px 14px;border-radius:12px;font-weight:700;font-size:13px} .btn.primary{background:linear-gradient(135deg,var(--cyan),var(--blue));color:#00111a;border:0}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px} .kpi{border:1px solid var(--line);border-radius:18px;background:rgba(15,23,42,.72);padding:16px} .kpi b{font-size:28px;display:block} .kpi span{font-size:11px;color:var(--muted);font-family:JetBrains Mono,monospace}
+.panel{margin-top:22px;border:1px solid var(--line);border-radius:24px;background:rgba(15,23,42,.72);backdrop-filter:blur(14px);padding:22px;box-shadow:0 18px 70px rgba(0,0,0,.2)} .section-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:16px} h2{font-size:28px;letter-spacing:-.035em;margin:4px 0} .sub{color:var(--muted);line-height:1.55}
+.grid{display:grid;gap:14px} .cols-2{grid-template-columns:repeat(2,minmax(0,1fr))} .cols-3{grid-template-columns:repeat(3,minmax(0,1fr))} .cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.glass{background:linear-gradient(180deg,rgba(15,23,42,.9),rgba(15,23,42,.58));border:1px solid var(--line);border-radius:18px} .card{padding:16px;transition:.25s transform,.25s border-color,.25s box-shadow} .card:hover{transform:translateY(-3px);border-color:rgba(34,211,238,.45);box-shadow:0 18px 45px rgba(0,0,0,.25)} .card-top{display:flex;align-items:center;gap:10px;margin-bottom:9px} .card h3{font-size:15px;margin:0} .card p{color:#cbd5e1;font-size:13px;line-height:1.55;margin:0} .dot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 18px currentColor;animation:pulse 2.4s infinite} @keyframes pulse{50%{opacity:.45;transform:scale(.82)}} .dot.cyan,.pill.cyan{color:var(--cyan);background:var(--cyanbg);border-color:var(--cyan)} .dot.emerald,.pill.emerald{color:var(--emerald);background:var(--emeraldbg);border-color:var(--emerald)} .dot.violet,.pill.violet{color:var(--violet);background:var(--violetbg);border-color:var(--violet)} .dot.amber,.pill.amber{color:var(--amber);background:var(--amberbg);border-color:var(--amber)} .dot.rose,.pill.rose{color:var(--rose);background:var(--rosebg);border-color:var(--rose)} .dot.orange,.pill.orange{color:var(--orange);background:var(--orangebg);border-color:var(--orange)}
+.pill{display:inline-flex;border:1px solid;border-radius:999px;padding:5px 8px;font-family:JetBrains Mono,monospace;font-size:11px;margin:2px}
+.arch-map{overflow:auto;border:1px solid var(--line);border-radius:22px;background:#020617;padding:10px} svg.master{min-width:1420px;width:100%;height:auto} .flowline{stroke-dasharray:8 8;animation:dash 20s linear infinite} @keyframes dash{to{stroke-dashoffset:-500}} .nodeText{font-family:JetBrains Mono,monospace;fill:#f8fafc;font-size:13px;font-weight:700} .nodeSub{font-family:JetBrains Mono,monospace;fill:#94a3b8;font-size:10px} .smallText{font-family:JetBrains Mono,monospace;fill:#94a3b8;font-size:9px}
+table{width:100%;border-collapse:collapse;font-size:13px;overflow:hidden;border-radius:14px} th,td{border-bottom:1px solid var(--line);padding:10px 11px;text-align:left;vertical-align:top} th{color:#e2e8f0;background:rgba(30,41,59,.8);font-family:JetBrains Mono,monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em} td{color:#cbd5e1} tr:hover td{background:rgba(34,211,238,.04)}
+.timeline{counter-reset:step;display:grid;gap:8px} .step{display:grid;grid-template-columns:38px 1fr;gap:12px;align-items:start;padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(2,6,23,.42)} .step:before{counter-increment:step;content:counter(step);width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:rgba(34,211,238,.13);color:var(--cyan);font-family:JetBrains Mono,monospace;font-weight:800} .step b{display:block;margin-bottom:3px} .step span{color:#94a3b8;font-size:12px;line-height:1.45}
+.diagram-shell{background:#020617;border:1px solid var(--line);border-radius:18px;padding:18px;overflow:auto} .mermaid{min-width:860px;display:flex;justify-content:center} details{margin-top:12px;border:1px solid var(--line);border-radius:14px;padding:12px;background:rgba(2,6,23,.5)} summary{cursor:pointer;color:var(--cyan);font-weight:700} pre{white-space:pre-wrap;word-break:break-word;font-family:JetBrains Mono,monospace;font-size:11px;color:#cbd5e1;line-height:1.45;max-height:520px;overflow:auto}
+.warning{border-color:rgba(251,113,133,.45);background:linear-gradient(180deg,rgba(136,19,55,.18),rgba(15,23,42,.7))} .ok{border-color:rgba(52,211,153,.45)} .path{font-family:JetBrains Mono,monospace;color:#bae6fd;font-size:12px;word-break:break-all}
+@media (max-width:1050px){.layout{grid-template-columns:1fr} aside{position:relative;height:auto} .kpis,.cols-4,.cols-3,.cols-2{grid-template-columns:1fr} main{padding:16px}}
+@media print{aside,.actions,.search{display:none} .layout{display:block} body{background:white;color:black} .panel,.hero{break-inside:avoid}}
+</style>
+
+<style id="blueprint-patch-css">
+.matrix{width:100%;border-collapse:collapse;font-size:13px}.matrix th,.matrix td{border:1px solid rgba(148,163,184,.18);padding:10px 12px;vertical-align:top}.matrix th{color:#67e8f9;background:rgba(14,165,233,.08);text-align:left}.matrix td{color:#cbd5e1}.timeline{display:grid;gap:10px;margin:0;padding-left:24px}.timeline li{padding:8px 12px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.15);border-radius:12px;color:#dbeafe}.panel h3{color:#e0f2fe}.card h4{margin:.2rem 0;color:#fde68a}
+</style>
+</head>
+<body>
+<div class="orb a"></div><div class="orb b"></div>
+<div class="layout">
+<aside>
+  <div class="brand"><div class="logo"></div><div><h1>MDP3 Architecture Atlas</h1><p>Generated 2026-04-29 02:15 EDT</p></div></div>
+  <input class="search" id="search" placeholder="filter sections/cards..." />
+  <nav class="nav">
+    <div class="group">Atlas</div><a href="#hero">Overview</a><a href="#latest-patch">Latest Patch</a><a href="#master">Master Map</a><a href="#pipelines">Pipeline Timelines</a><a href="#n8n">n8n Hands</a><a href="#ops">Ops API</a><a href="#data">Data Stores</a><a href="#paperclip">Paperclip Agents</a><a href="#telegram">Telegram</a><a href="#guardrails">Guardrails</a><a href="#gaps">Gaps</a>
+    <div class="group">Rendered Diagrams</div><a href="#mermaid-0">Top-Level Architecture</a><a href="#mermaid-1">Meddash n8n Chain</a><a href="#mermaid-2">CQ n8n Chain</a><a href="#mermaid-3">Telegram Polling Chain</a><a href="#mermaid-4">Ticker Spine ERD</a><a href="#mermaid-5">Paperclip Org</a><a href="#mermaid-6">Paperclip Wake Sequence</a><a href="#mermaid-7">Telegram Pattern</a><a href="#mermaid-8">Meddash Daily Sequence</a><a href="#mermaid-9">CQ Daily Sequence</a><a href="#mermaid-10">Trigger Surface</a><a href="#mermaid-11">Canonical Data Direction</a>
+    <div class="group">Source</div><a href="#source">Full Markdown Appendix</a>
+  </nav>
+</aside>
+<main>
+<section class="hero searchable" id="hero">
+  <span class="eyebrow">Current Production Architecture Snapshot</span>
+  <h1 class="big">Meddash + Clinical Quant</h1>
+  <p>Standalone animated architecture atlas generated from <b>mdp3.architecture.20260429-0215.md</b>. It preserves the full workflow after ticker-spine reversal, n8n simplification, Paperclip trigger correction, new Supabase tables, CQ engine coupling, Ops API consolidation, C-run verification fixes, bounded scheduled KOL lane, SEC timeout bounding, Streamlit dashboard auto-refresh repair, and centralized Telegram observability.</p>
+  <div class="actions"><a class="btn primary" href="#master">Open Master Map</a><a class="btn" href="#pipelines">View Pipelines</a><a class="btn" href="#source">Audit Source</a><button class="btn" onclick="window.print()">Print / Save PDF</button></div>
+  <div class="kpis">
+    <div class="kpi"><b>3</b><span>Meddash engines green via Ops API</span></div><div class="kpi"><b>10</b><span>Ops API routes</span></div><div class="kpi"><b>2</b><span>CQ Paperclip wakeups verified</span></div><div class="kpi"><b>active=0</b><span>n8n UI toggle still required</span></div>
+  </div>
+</section>
+
+<section class="panel searchable ok" id="latest-patch" data-search="latest c-run kol bounded sec timeout ct summary dashboard telegram n8n active ops api">
+  <div class="section-head"><div><span class="eyebrow">Latest Verified Patch</span><h2>C-Run Architecture Update — 2026-04-29 18:52 EDT</h2><p class="sub">This patch distinguishes safe scheduled freshness lanes from full/deep manual rebuild lanes. C-run verification is now reflected in both the source markdown and this HTML atlas.</p></div><span class="pill emerald">Meddash health green</span></div>
+  <div class="grid cols-3">
+    <article class="glass card emerald"><div class="card-top"><span class="dot emerald"></span><h3>KOL Engine 01</h3></div><p>Scheduled lane is now bounded: <code>--max-targets 5 --max-results 5 --skip-disambiguation --skip-weights --skip-centrality --json-summary</code>. Verified via live <code>/meddash/engine01</code> in 122.95s.</p></article>
+    <article class="glass card emerald"><div class="card-top"><span class="dot emerald"></span><h3>CT Health</h3></div><p>Ops API health now reads the real CT summary file <code>ct_crawler_summary.json</code> under the logical <code>ct_delta</code> key. Live health reports CT success.</p></article>
+    <article class="glass card emerald"><div class="card-top"><span class="dot emerald"></span><h3>CQ SEC 8-K</h3></div><p>SEC monitor has explicit request timeout, bounded insert timeout, and daily scan cap <code>CQ_SEC_MAX_TICKERS=40</code>. <code>/cq/detect</code> reran green in 106.21s.</p></article>
+    <article class="glass card cyan"><div class="card-top"><span class="dot cyan"></span><h3>Telegram</h3></div><p>Ops API Telegram is authoritative and verified OK for Meddash health, CQ detect, and latest report. Internal script Telegram 404s are legacy noise to clean later.</p></article>
+    <article class="glass card cyan"><div class="card-top"><span class="dot cyan"></span><h3>Dashboard</h3></div><p>Streamlit now has browser meta-refresh and last-render marker. Dashboard-Monitor watches freshness/accountability; it does not update the DB itself.</p></article>
+    <article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>n8n Caveat</h3></div><p>Workflows remain <code>active=0</code> in SQLite. C-run was verified directly through Ops API; scheduled automation still requires n8n UI activation/toggle.</p></article>
+  </div>
+</section>
+
+<section class="panel searchable" id="master">
+<div class="section-head"><div><span class="eyebrow">Animated System Map</span><h2>Control Plane + Data Plane</h2><p class="sub">Large readable SVG map. Arrows animate in the direction of control/data movement. Semantic colors: cyan=n8n/UI, emerald=backend/API, violet=database, amber=external/cloud, orange=agents/messaging, rose=guarded/disabled.</p></div></div>
+<div class="arch-map">
+<svg class="master" viewBox="0 0 1500 980" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <marker id="arr" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0,10 4,0 8" fill="#64748b"/></marker>
+  <marker id="arrC" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0,10 4,0 8" fill="#22d3ee"/></marker>
+  <marker id="arrE" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0,10 4,0 8" fill="#34d399"/></marker>
+  <marker id="arrV" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0,10 4,0 8" fill="#a78bfa"/></marker>
+  <filter id="glow"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="1500" height="980" fill="#020617"/><g opacity=".5"><line x1="0" y1="0" x2="0" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="40" y1="0" x2="40" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="80" y1="0" x2="80" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="120" y1="0" x2="120" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="160" y1="0" x2="160" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="200" y1="0" x2="200" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="240" y1="0" x2="240" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="280" y1="0" x2="280" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="320" y1="0" x2="320" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="360" y1="0" x2="360" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="400" y1="0" x2="400" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="440" y1="0" x2="440" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="480" y1="0" x2="480" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="520" y1="0" x2="520" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="560" y1="0" x2="560" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="600" y1="0" x2="600" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="640" y1="0" x2="640" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="680" y1="0" x2="680" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="720" y1="0" x2="720" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="760" y1="0" x2="760" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="800" y1="0" x2="800" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="840" y1="0" x2="840" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="880" y1="0" x2="880" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="920" y1="0" x2="920" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="960" y1="0" x2="960" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1000" y1="0" x2="1000" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1040" y1="0" x2="1040" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1080" y1="0" x2="1080" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1120" y1="0" x2="1120" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1160" y1="0" x2="1160" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1200" y1="0" x2="1200" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1240" y1="0" x2="1240" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1280" y1="0" x2="1280" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1320" y1="0" x2="1320" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1360" y1="0" x2="1360" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1400" y1="0" x2="1400" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1440" y1="0" x2="1440" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="1480" y1="0" x2="1480" y2="980" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="0" x2="1500" y2="0" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="40" x2="1500" y2="40" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="80" x2="1500" y2="80" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="120" x2="1500" y2="120" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="160" x2="1500" y2="160" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="200" x2="1500" y2="200" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="240" x2="1500" y2="240" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="280" x2="1500" y2="280" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="320" x2="1500" y2="320" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="360" x2="1500" y2="360" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="400" x2="1500" y2="400" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="440" x2="1500" y2="440" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="480" x2="1500" y2="480" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="520" x2="1500" y2="520" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="560" x2="1500" y2="560" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="600" x2="1500" y2="600" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="640" x2="1500" y2="640" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="680" x2="1500" y2="680" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="720" x2="1500" y2="720" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="760" x2="1500" y2="760" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="800" x2="1500" y2="800" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="840" x2="1500" y2="840" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="880" x2="1500" y2="880" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="920" x2="1500" y2="920" stroke="#1e293b" stroke-width=".6"/><line x1="0" y1="960" x2="1500" y2="960" stroke="#1e293b" stroke-width=".6"/></g>
+<!-- Boundaries -->
+<rect x="20" y="70" width="250" height="620" rx="18" fill="rgba(8,51,68,.16)" stroke="#22d3ee" stroke-dasharray="9 5"/><text x="40" y="96" class="nodeText" fill="#22d3ee">n8n HANDS</text>
+<rect x="310" y="70" width="260" height="620" rx="18" fill="rgba(6,78,59,.16)" stroke="#34d399" stroke-dasharray="9 5"/><text x="330" y="96" class="nodeText" fill="#34d399">OPS API / ROUTERS</text>
+<rect x="620" y="70" width="360" height="620" rx="18" fill="rgba(6,78,59,.10)" stroke="#34d399" stroke-dasharray="9 5"/><text x="640" y="96" class="nodeText" fill="#34d399">LOCAL ENGINES</text>
+<rect x="1030" y="70" width="280" height="620" rx="18" fill="rgba(76,29,149,.16)" stroke="#a78bfa" stroke-dasharray="9 5"/><text x="1050" y="96" class="nodeText" fill="#a78bfa">DATA STORES</text>
+<rect x="20" y="725" width="1290" height="210" rx="18" fill="rgba(251,146,60,.10)" stroke="#fb923c" stroke-dasharray="9 5"/><text x="40" y="752" class="nodeText" fill="#fb923c">PAPERCLIP + HUMAN/Vault OUTPUT LAYER</text>
+<rect x="1340" y="70" width="140" height="865" rx="18" fill="rgba(120,53,15,.14)" stroke="#fbbf24" stroke-dasharray="9 5"/><text x="1353" y="96" class="nodeText" fill="#fbbf24">EXTERNAL</text>
+<!-- lines behind nodes -->
+<g stroke-width="2.2" fill="none" marker-end="url(#arrC)" opacity=".95">
+<path class="flowline" d="M250 168 C300 168 310 168 342 168" stroke="#22d3ee"/><path class="flowline" d="M250 270 C300 270 310 270 342 270" stroke="#22d3ee"/><path class="flowline" d="M250 390 C300 390 310 390 342 390" stroke="#22d3ee"/>
+</g><g stroke-width="2.2" fill="none" marker-end="url(#arrE)">
+<path class="flowline" d="M548 168 C605 168 598 155 650 155" stroke="#34d399"/><path class="flowline" d="M548 270 C605 270 598 300 650 300" stroke="#34d399"/><path class="flowline" d="M548 390 C602 390 602 490 650 490" stroke="#34d399"/><path class="flowline" d="M545 515 C675 690 880 750 1032 790" stroke="#fb923c"/>
+</g><g stroke-width="2.2" fill="none" marker-end="url(#arrV)">
+<path class="flowline" d="M955 155 C1000 155 1000 150 1052 150" stroke="#a78bfa"/><path class="flowline" d="M955 300 C1000 300 1000 300 1052 300" stroke="#a78bfa"/><path class="flowline" d="M955 490 C1000 490 1000 512 1052 512" stroke="#a78bfa"/>
+</g><g stroke-width="2" fill="none" marker-end="url(#arr)"><path class="flowline" d="M1310 190 C1340 190 1338 190 1350 190" stroke="#fbbf24"/><path class="flowline" d="M1350 360 C1275 360 1275 360 1212 360" stroke="#fbbf24"/><path class="flowline" d="M1210 835 C995 760 790 750 565 786" stroke="#fb923c"/></g>
+<!-- helper node function not possible; explicit nodes -->
+<g filter="url(#glow)">
+<rect x="45" y="130" width="190" height="76" rx="12" fill="rgba(8,51,68,.45)" stroke="#22d3ee"/><text x="140" y="158" text-anchor="middle" class="nodeText">Meddash Work Flow</text><text x="140" y="178" text-anchor="middle" class="nodeSub">06:00 UTC schedule</text><text x="140" y="193" text-anchor="middle" class="smallText">active flag currently 0</text>
+<rect x="45" y="235" width="190" height="90" rx="12" fill="rgba(8,51,68,.45)" stroke="#22d3ee"/><text x="140" y="263" text-anchor="middle" class="nodeText">CQ-Free Newsletter</text><text x="140" y="283" text-anchor="middle" class="nodeSub">11:00 UTC schedule</text><text x="140" y="300" text-anchor="middle" class="smallText">ticker spine → detect → agents</text>
+<rect x="45" y="360" width="190" height="76" rx="12" fill="rgba(8,51,68,.45)" stroke="#22d3ee"/><text x="140" y="388" text-anchor="middle" class="nodeText">Command Listener</text><text x="140" y="408" text-anchor="middle" class="nodeSub">10 sec Telegram poll</text>
+<rect x="345" y="125" width="190" height="86" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="440" y="153" text-anchor="middle" class="nodeText">Ops API</text><text x="440" y="173" text-anchor="middle" class="nodeSub">127.0.0.1:8765</text><text x="440" y="190" text-anchor="middle" class="smallText">/meddash/* /cq/* /telegram/*</text>
+<rect x="345" y="242" width="190" height="78" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="440" y="270" text-anchor="middle" class="nodeText">CQ Runner</text><text x="440" y="290" text-anchor="middle" class="nodeSub">cq_pipeline_runner.py</text>
+<rect x="345" y="362" width="190" height="78" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="440" y="390" text-anchor="middle" class="nodeText">Meddash Runner</text><text x="440" y="410" text-anchor="middle" class="nodeSub">meddash_pipeline_runner.py</text>
+<rect x="345" y="488" width="190" height="62" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="440" y="514" text-anchor="middle" class="nodeText">Telegram Poller</text><text x="440" y="533" text-anchor="middle" class="nodeSub">meddash_command_poll_once.py</text>
+<rect x="650" y="125" width="135" height="72" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="717" y="153" text-anchor="middle" class="nodeText">KOL Engine</text><text x="717" y="173" text-anchor="middle" class="nodeSub">bounded scheduled lane</text><text x="717" y="188" text-anchor="middle" class="smallText">5 targets x 5 results</text>
+<rect x="810" y="125" width="135" height="72" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="878" y="153" text-anchor="middle" class="nodeText">CT Engine</text><text x="878" y="173" text-anchor="middle" class="nodeSub">ct_crawler delta</text>
+<rect x="650" y="245" width="135" height="72" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="717" y="273" text-anchor="middle" class="nodeText">BioCrawler</text><text x="717" y="293" text-anchor="middle" class="nodeSub">--mode test</text>
+<rect x="810" y="245" width="135" height="72" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="878" y="273" text-anchor="middle" class="nodeText">Health</text><text x="878" y="293" text-anchor="middle" class="nodeSub">summary + Telegram</text>
+<rect x="650" y="375" width="135" height="72" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="717" y="403" text-anchor="middle" class="nodeText">Ticker Spine</text><text x="717" y="423" text-anchor="middle" class="nodeSub">Alpha + SEC</text>
+<rect x="810" y="375" width="135" height="72" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="878" y="403" text-anchor="middle" class="nodeText">Yahoo Links</text><text x="878" y="423" text-anchor="middle" class="nodeSub">RSS metadata</text>
+<rect x="650" y="485" width="135" height="72" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="717" y="513" text-anchor="middle" class="nodeText">SEC / FDA</text><text x="717" y="533" text-anchor="middle" class="nodeSub">bounded regulatory scans</text>
+<rect x="810" y="485" width="135" height="72" rx="12" fill="rgba(6,78,59,.42)" stroke="#34d399"/><text x="878" y="513" text-anchor="middle" class="nodeText">PR Wire</text><text x="878" y="533" text-anchor="middle" class="nodeSub">bounded RSS fetch</text>
+<rect x="1055" y="120" width="220" height="78" rx="12" fill="rgba(76,29,149,.4)" stroke="#a78bfa"/><text x="1165" y="148" text-anchor="middle" class="nodeText">Local SQLite</text><text x="1165" y="168" text-anchor="middle" class="nodeSub">KOL / CT / BioCrawler DBs</text>
+<rect x="1055" y="248" width="220" height="110" rx="12" fill="rgba(76,29,149,.4)" stroke="#a78bfa"/><text x="1165" y="276" text-anchor="middle" class="nodeText">Supabase</text><text x="1165" y="296" text-anchor="middle" class="nodeSub">ticker spine + events</text><text x="1165" y="316" text-anchor="middle" class="smallText">13,257 tickers / 111 market events</text>
+<rect x="1055" y="460" width="220" height="90" rx="12" fill="rgba(76,29,149,.4)" stroke="#a78bfa"/><text x="1165" y="488" text-anchor="middle" class="nodeText">Hermes Vault</text><text x="1165" y="508" text-anchor="middle" class="nodeSub">Obsidian / SWIP4 / logs</text><text x="1165" y="526" text-anchor="middle" class="smallText">canonical brain</text>
+<rect x="1055" y="590" width="220" height="62" rx="12" fill="rgba(76,29,149,.4)" stroke="#a78bfa"/><text x="1165" y="616" text-anchor="middle" class="nodeText">Google Sheets</text><text x="1165" y="635" text-anchor="middle" class="nodeSub">Biocrawler Biotech List</text>
+<rect x="1355" y="130" width="110" height="52" rx="10" fill="rgba(120,53,15,.34)" stroke="#fbbf24"/><text x="1410" y="160" text-anchor="middle" class="nodeText">PubMed</text>
+<rect x="1355" y="200" width="110" height="52" rx="10" fill="rgba(120,53,15,.34)" stroke="#fbbf24"/><text x="1410" y="230" text-anchor="middle" class="nodeText">CT.gov</text>
+<rect x="1355" y="270" width="110" height="52" rx="10" fill="rgba(120,53,15,.34)" stroke="#fbbf24"/><text x="1410" y="300" text-anchor="middle" class="nodeText">SEC/FDA</text>
+<rect x="1355" y="340" width="110" height="52" rx="10" fill="rgba(120,53,15,.34)" stroke="#fbbf24"/><text x="1410" y="370" text-anchor="middle" class="nodeText">Yahoo RSS</text>
+<rect x="1355" y="410" width="110" height="52" rx="10" fill="rgba(120,53,15,.34)" stroke="#fbbf24"/><text x="1410" y="440" text-anchor="middle" class="nodeText">Alpha V.</text>
+<rect x="1355" y="480" width="110" height="52" rx="10" fill="rgba(120,53,15,.34)" stroke="#fbbf24"/><text x="1410" y="510" text-anchor="middle" class="nodeText">Telegram</text>
+<rect x="55" y="785" width="180" height="72" rx="12" fill="rgba(251,146,60,.34)" stroke="#fb923c"/><text x="145" y="813" text-anchor="middle" class="nodeText">CQ-Selector</text><text x="145" y="833" text-anchor="middle" class="nodeSub">assigned + woken</text>
+<rect x="265" y="785" width="180" height="72" rx="12" fill="rgba(251,146,60,.34)" stroke="#fb923c"/><text x="355" y="813" text-anchor="middle" class="nodeText">CQ-Researcher</text><text x="355" y="833" text-anchor="middle" class="nodeSub">deep verification</text>
+<rect x="475" y="785" width="180" height="72" rx="12" fill="rgba(251,146,60,.34)" stroke="#fb923c"/><text x="565" y="813" text-anchor="middle" class="nodeText">CQ-Monitor</text><text x="565" y="833" text-anchor="middle" class="nodeSub">QA verification</text>
+<rect x="700" y="785" width="180" height="72" rx="12" fill="rgba(251,146,60,.34)" stroke="#fb923c"/><text x="790" y="813" text-anchor="middle" class="nodeText">Meddash Agents</text><text x="790" y="833" text-anchor="middle" class="nodeSub">COO/CTO/CMO/Eye</text>
+<rect x="930" y="785" width="180" height="72" rx="12" fill="rgba(8,51,68,.45)" stroke="#22d3ee"/><text x="1020" y="813" text-anchor="middle" class="nodeText">Telegram</text><text x="1020" y="833" text-anchor="middle" class="nodeSub">Dr. Don alerts</text>
+<rect x="1140" y="785" width="150" height="72" rx="12" fill="rgba(136,19,55,.28)" stroke="#fb7185"/><text x="1215" y="813" text-anchor="middle" class="nodeText">Human Review</text><text x="1215" y="833" text-anchor="middle" class="nodeSub">manual publish</text>
+</g>
+</svg>
+</div>
+</section>
+
+<section class="panel searchable" id="pillars"><div class="section-head"><div><span class="eyebrow">Operating Model</span><h2>Four Pillars</h2></div></div><div class="grid cols-4">
+<article class="glass card cyan"><div class="card-top"><span class="dot cyan"></span><h3>n8n = Hands</h3></div><p>Schedules deterministic workflows and calls local HTTP endpoints only. No Code require(), no Execute Command dependency, no Telegram webhook trigger.</p></article>
+<article class="glass card emerald"><div class="card-top"><span class="dot emerald"></span><h3>Ops API = Router</h3></div><p>Local Python execution layer at 127.0.0.1:8765. Owns subprocesses, bounded scheduled lanes, timeouts, health, and authoritative Telegram sends.</p></article>
+<article class="glass card orange"><div class="card-top"><span class="dot orange"></span><h3>Paperclip = Workers</h3></div><p>Receives assigned issues via assigneeAgentId and explicit wakeup. Handles bounded reasoning, selection, QA, and monitoring.</p></article>
+<article class="glass card violet"><div class="card-top"><span class="dot violet"></span><h3>Alfred/Hermes = Overseer</h3></div><p>Cross-system fixer and durable brain. SWIP4 is tactical ledger; Obsidian/Hermes vault is canonical memory.</p></article>
+</div></section>
+
+<section class="panel searchable" id="pipelines"><div class="section-head"><div><span class="eyebrow">Granular Flows</span><h2>Daily Pipeline Timelines</h2></div></div>
+<div class="grid cols-2"><div><h3>Meddash Daily — 06:00 UTC</h3><div class="timeline">
+<div class="step"><div><b>n8n schedule fires</b><span>Daily Schedule 06:00 UTC</span></div></div><div class="step"><div><b>POST /meddash/engine01</b><span>Ops API runs meddash_pipeline_runner.py engine01</span></div></div><div class="step"><div><b>KOL engine</b><span>Bounded scheduled lane updates KOL/publication freshness; deep KOL rebuild remains manual.</span></div></div><div class="step"><div><b>POST /meddash/engine02</b><span>CT delta crawler runs for last 24h</span></div></div><div class="step"><div><b>POST /meddash/engine03</b><span>BioCrawler runs bounded --mode test</span></div></div><div class="step"><div><b>POST /meddash/health</b><span>Ops API reads summaries and sends Telegram health</span></div></div>
+</div></div><div><h3>CQ Daily — 11:00 UTC</h3><div class="timeline">
+<div class="step"><div><b>n8n schedule fires</b><span>Daily Schedule 11:00 UTC</span></div></div><div class="step"><div><b>POST /cq/ticker-spine</b><span>Refresh Alpha Vantage listing + SEC CIK map</span></div></div><div class="step"><div><b>POST /cq/detect</b><span>Run ticker spine, Yahoo RSS, SEC, FDA, PR</span></div></div><div class="step"><div><b>Create CQ-Selector issue</b><span>Paperclip issue uses full assigneeAgentId</span></div></div><div class="step"><div><b>Wake CQ-Selector</b><span>Explicit /api/agents/{id}/wakeup</span></div></div><div class="step"><div><b>Create CQ-Monitor issue</b><span>Assigned to CQ-Monitor UUID</span></div></div><div class="step"><div><b>Wake CQ-Monitor</b><span>Explicit deterministic wake</span></div></div><div class="step"><div><b>POST /cq/latest-report</b><span>Send latest CQ report preview to Telegram</span></div></div>
+</div></div></div></section>
+
+<section class="panel searchable" id="n8n"><div class="section-head"><div><span class="eyebrow">n8n Hands</span><h2>Live Workflow Surface</h2><p class="sub">All currently mapped workflows show active=0 in SQLite; after DB edits, hard-refresh the UI and toggle intended schedules active.</p></div><span class="pill rose">UI toggle required</span></div>
+<table><thead><tr><th>Workflow</th><th>ID</th><th>Schedule</th><th>Canonical chain</th></tr></thead><tbody>
+<tr><td>Meddash Work Flow</td><td>QMwgjPEngkfq6vgD</td><td>06:00 UTC</td><td>/meddash/engine01 → /engine02 → /engine03 → /health</td></tr>
+<tr><td>CQ-Free Newsletter 1100</td><td>dfb3zednYhdcdqxE</td><td>11:00 UTC</td><td>/cq/ticker-spine → /cq/detect → Paperclip Selector issue+wakeup → Monitor issue+wakeup → /cq/latest-report</td></tr>
+<tr><td>Meddash Command Listener</td><td>VgOjInsEaeFBDIR9</td><td>Every 10 sec</td><td>/telegram/poll → meddash_command_poll_once.py</td></tr>
+</tbody></table></section>
+
+<section class="panel searchable" id="ops"><div class="section-head"><div><span class="eyebrow">Execution Router</span><h2>Ops API Routes</h2><p class="sub path">/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/07_DevOps_Observability/meddash_ops_api.py</p></div><span class="pill emerald">127.0.0.1:8765</span></div>
+<table><thead><tr><th>Method</th><th>Route</th><th>Action</th></tr></thead><tbody><tr><td>GET</td><td>/health</td><td>Return Ops API health JSON</td></tr>
+<tr><td>POST</td><td>/telegram/test</td><td>Send Telegram test message</td></tr>
+<tr><td>POST</td><td>/telegram/poll</td><td>Run Telegram command poller</td></tr>
+<tr><td>POST</td><td>/meddash/engine01</td><td>Run bounded scheduled KOL lane; verified success in 122.95s</td></tr>
+<tr><td>POST</td><td>/meddash/engine02</td><td>Run CT delta engine</td></tr>
+<tr><td>POST</td><td>/meddash/engine03</td><td>Run bounded BioCrawler</td></tr>
+<tr><td>POST</td><td>/meddash/health</td><td>Read summaries/DB counts and send Telegram health</td></tr>
+<tr><td>POST</td><td>/cq/ticker-spine</td><td>Run CQ ticker-spine refresh only</td></tr>
+<tr><td>POST</td><td>/cq/detect</td><td>Run ticker spine + Yahoo + bounded SEC/FDA/PR; verified success in 106.21s</td></tr>
+<tr><td>POST</td><td>/cq/latest-report</td><td>Send latest CQ report preview</td></tr></tbody></table></section>
+
+<section class="panel searchable" id="data"><div class="section-head"><div><span class="eyebrow">Data Spine</span><h2>Local + Supabase Data Stores</h2><p class="sub">Ticker identity flows from market/security sources to biotech_tickers, then reverse-matches BioCrawler. Fuzzy company-name-to-ticker writes are disabled.</p></div><span class="pill emerald">Canonical direction fixed</span></div>
+<h3>Supabase tables</h3><div class="grid cols-4"><article class="glass card violet"><div class="card-top"><span class="dot violet"></span><h3>biotech_tickers</h3></div><p><b>13,257</b><br>Canonical ticker/security registry</p></article><article class="glass card violet"><div class="card-top"><span class="dot violet"></span><h3>biotech_ticker_aliases</h3></div><p><b>13,257</b><br>Alias/name table tied to ticker IDs</p></article><article class="glass card violet"><div class="card-top"><span class="dot violet"></span><h3>biocrawler_ticker_matches</h3></div><p><b>194</b><br>Reverse BioCrawler ↔ ticker spine matches/candidates</p></article><article class="glass card violet"><div class="card-top"><span class="dot violet"></span><h3>cq_market_sentiment</h3></div><p><b>111</b><br>Link-level market/news metadata from Yahoo RSS</p></article><article class="glass card violet"><div class="card-top"><span class="dot violet"></span><h3>cq_market_events</h3></div><p><b>111</b><br>Link-level event table for CQ Selector</p></article><article class="glass card amber"><div class="card-top"><span class="dot amber"></span><h3>cq_price_bars</h3></div><p><b>0</b><br>Future Massive/price-bar target</p></article><article class="glass card violet"><div class="card-top"><span class="dot violet"></span><h3>biotech_leads</h3></div><p><b>640</b><br>Supabase company/lead table</p></article><article class="glass card amber"><div class="card-top"><span class="dot amber"></span><h3>cq_regulatory_catalysts</h3></div><p><b>0</b><br>CQ regulatory catalyst table</p></article></div>
+<h3>Local SQLite stores</h3><table><thead><tr><th>DB</th><th>Counts</th><th>Role</th></tr></thead><tbody><tr><td>meddash_kols.db</td><td>kols 8,298; publications 877; journal_metrics 31,125</td><td>KOL/publication intelligence</td></tr>
+<tr><td>ct_trials.db</td><td>trials 1,005; sites 15,555; outcomes 7,391</td><td>Clinical-trials intelligence</td></tr>
+<tr><td>biocrawler_leads.db</td><td>biotech_leads 658; associated_kols 448</td><td>GTM/company intelligence</td></tr></tbody></table></section>
+
+<section class="panel searchable" id="paperclip"><div class="section-head"><div><span class="eyebrow">Paperclip Workers</span><h2>Agent Roster + Trigger Rule</h2><p class="sub">Company ID: cf39ae28-5bd5-44d1-b888-b01f83192fd5. Correct issue field is assigneeAgentId; wakeup endpoint is mandatory for deterministic start.</p></div><span class="pill orange">12 agents</span></div>
+<table><thead><tr><th>Agent</th><th>UUID</th><th>Role</th><th>Model</th><th>Team</th></tr></thead><tbody><tr><td>CQ-COO</td><td>d69fface-4475-4166-aa9d-f26acbcd12d2</td><td>CEO/COO</td><td>glm-5.1</td><td>CQ</td></tr>
+<tr><td>CQ-CTO</td><td>1ad999cb-a7f2-4464-8d3a-701e04951ff6</td><td>CTO</td><td>glm-5.1</td><td>CQ</td></tr>
+<tr><td>CQ-Selector</td><td>31049770-807e-4e82-9a87-15ccdb43845f</td><td>PM/editor</td><td>glm-5</td><td>CQ</td></tr>
+<tr><td>CQ-Researcher</td><td>26105f52-560b-4ac3-afb7-4df51f0de0fb</td><td>Researcher</td><td>kimi-k2.5</td><td>CQ</td></tr>
+<tr><td>CQ-Monitor</td><td>bb9deb04-97d7-4f35-89bc-130f67d8f759</td><td>QA</td><td>ministral-3:3b</td><td>CQ</td></tr>
+<tr><td>Meddash-COO</td><td>ca4c3f1a-dd15-43c4-8ae2-498b3a839273</td><td>CEO/COO</td><td>glm-5</td><td>MD</td></tr>
+<tr><td>Meddash-CTO</td><td>9511e1ea-def0-4c0b-a78b-7d9f63cae6a2</td><td>CTO</td><td>glm-5.1</td><td>MD</td></tr>
+<tr><td>Meddash-Monitor</td><td>2f72ef2a-f8da-41ba-a41c-b1a20080ba55</td><td>QA</td><td>deepseek-v4-flash</td><td>MD</td></tr>
+<tr><td>Dashboard-Monitor</td><td>b04b8342-527c-4ceb-abee-bf44dade4fe7</td><td>DevOps</td><td>ministral-3:3b</td><td>MD</td></tr>
+<tr><td>Meddash-CMO</td><td>45d700f5-3451-48a6-b6e6-a0e211040a60</td><td>CMO</td><td>glm-4.7</td><td>MD</td></tr>
+<tr><td>File Index Agent</td><td>26dd7a48-4682-437a-8491-89a1bbb2332f</td><td>Librarian</td><td>qwen2.5:7b</td><td>MD</td></tr>
+<tr><td>Meddash-Eye</td><td>ef38de08-972a-4b7d-9ff7-c00bdba02950</td><td>Researcher</td><td>glm-5</td><td>MD</td></tr></tbody></table></section>
+
+<section class="panel searchable" id="telegram"><div class="section-head"><div><span class="eyebrow">Messaging</span><h2>Telegram Paths</h2></div></div><div class="grid cols-3">
+<article class="glass card emerald"><div class="card-top"><span class="dot emerald"></span><h3>Central Ops API sends</h3></div><p>Meddash health, CQ detection finished, ticker spine finished, latest CQ report preview.</p></article>
+<article class="glass card cyan"><div class="card-top"><span class="dot cyan"></span><h3>n8n CQ side alerts</h3></div><p>Two direct Telegram send nodes: CQ Engine Started and CQ Selector Triggered.</p></article>
+<article class="glass card amber"><div class="card-top"><span class="dot amber"></span><h3>Command polling</h3></div><p>n8n every 10 sec → /telegram/poll → meddash_command_poll_once.py. No Telegram webhook trigger.</p></article>
+</div></section>
+
+<section class="panel searchable warning" id="guardrails"><div class="section-head"><div><span class="eyebrow">Never Again Rules</span><h2>Guardrails / Disabled Paths</h2></div></div><div class="grid cols-2"><article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>Guardrail</h3></div><p>Do not auto-write fuzzy ticker matches</p></article><article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>Guardrail</h3></div><p>Do not run SEC/news/price pulls from unverified BioCrawler ticker guesses</p></article><article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>Guardrail</h3></div><p>Do not use BioCrawler company name as market-security source of truth</p></article><article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>Guardrail</h3></div><p>Do not scrape Yahoo Finance pages directly if RSS works</p></article><article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>Guardrail</h3></div><p>Do not reintroduce BusinessWire HTML page as PR RSS</p></article><article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>Guardrail</h3></div><p>Do not use n8n Telegram Trigger on localhost</p></article><article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>Guardrail</h3></div><p>Do not use n8n Code nodes with require()</p></article><article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>Guardrail</h3></div><p>Do not use n8n Execute Command nodes in this install</p></article><article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>Guardrail</h3></div><p>Do not use Paperclip assignee or short IDs</p></article><article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>Guardrail</h3></div><p>Do not create Paperclip issues without explicit wakeup</p></article><article class="glass card rose"><div class="card-top"><span class="dot rose"></span><h3>Guardrail</h3></div><p>Do not print or persist secrets in docs</p></article></div></section>
+
+<section class="panel searchable" id="gaps"><div class="section-head"><div><span class="eyebrow">Watch Items</span><h2>Current Known Gaps</h2></div></div><table><thead><tr><th>Gap</th><th>Severity</th><th>Next action</th></tr></thead><tbody>
+<tr><td>n8n active flags are 0</td><td>High operational</td><td>Open n8n UI, hard refresh, toggle intended workflows active.</td></tr>
+<tr><td>CT health filename mismatch</td><td>Fixed</td><td>Ops API now reads ct_crawler_summary.json under logical ct_delta key.</td></tr>
+<tr><td>cq_price_bars empty</td><td>Low</td><td>Add bounded Massive stage later if price context is needed.</td></tr>
+<tr><td>cq_regulatory_catalysts empty</td><td>Medium</td><td>Monitor after market day / expand detectors if needed.</td></tr>
+<tr><td>A0-CQ model endpoints stale</td><td>Low</td><td>Clean model config before using A2A in production.</td></tr>
+</tbody></table></section>
+
+<section class="panel searchable" id="external"><div class="section-head"><div><span class="eyebrow">External Inputs</span><h2>Source Surface</h2></div></div><div><span class="pill amber">PubMed / NCBI E-utilities</span><span class="pill amber">ORCID</span><span class="pill amber">SCImago / journal metrics</span><span class="pill amber">ClinicalTrials.gov API v2</span><span class="pill amber">SEC EDGAR / SEC ticker map</span><span class="pill amber">FDA calendars/pages</span><span class="pill amber">PRNewswire RSS</span><span class="pill amber">GlobeNewswire RSS</span><span class="pill amber">Yahoo Finance RSS</span><span class="pill amber">Alpha Vantage listing status</span><span class="pill amber">Massive prototype</span><span class="pill amber">Google Sheets</span><span class="pill amber">Telegram Bot API</span><span class="pill amber">Supabase Postgres/REST</span></div></section>
+
+
+<section class="panel mermaid-panel" id="mermaid-0">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>Top-Level Architecture</h2></div>
+  <div class="diagram-shell"><div class="mermaid">flowchart TB
+    DrDon[&quot;Dr. Don\nCEO / Human Review&quot;]
+    Alfred[&quot;Alfred Chief / Hermes\nOverseer + Fixer&quot;]
+    Vault[&quot;Hermes Agent Win Files / Obsidian\nShared Brain + SWIP4 + Logs&quot;]
+    Graph[&quot;Hermes graph memory\nTime-indexed recall&quot;]
+
+    subgraph N8N[&quot;n8n Hands — localhost:5678&quot;]
+        MW[&quot;Meddash Work Flow\n06:00 UTC schedule&quot;]
+        CQW[&quot;CQ-Free Newsletter 1100\n11:00 UTC schedule&quot;]
+        CMD[&quot;Meddash Command Listener\nEvery 10 sec Telegram poll&quot;]
+    end
+
+    Ops[&quot;Local Python Ops API\n127.0.0.1:8765&quot;]
+
+    subgraph Meddash[&quot;Meddash Engines&quot;]
+        KOL[&quot;Engine 01 KOL\nnightly_scheduler.py&quot;]
+        CT[&quot;Engine 02 CT\nct_crawler.py delta 24h&quot;]
+        BIO[&quot;Engine 03 BioCrawler\nbiocrawler.py --mode test&quot;]
+        Health[&quot;Meddash Health\nsummary JSON + DB counts&quot;]
+    end
+
+    subgraph CQ[&quot;Clinical Quant Engines&quot;]
+        Ticker[&quot;Ticker Spine\nbuild_biotech_ticker_registry.py&quot;]
+        Yahoo[&quot;Yahoo RSS Links\npull_yahoo_ticker_news.py&quot;]
+        SEC[&quot;SEC 8-K Monitor&quot;]
+        FDA[&quot;FDA PDUFA Tracker&quot;]
+        PR[&quot;PR Wire Aggregator&quot;]
+        Latest[&quot;Latest CQ Report Sender&quot;]
+    end
+
+    subgraph LocalDB[&quot;Local SQLite Datastores&quot;]
+        KOLDB[&quot;meddash_kols.db&quot;]
+        CTDB[&quot;ct_trials.db&quot;]
+        BIODB[&quot;biocrawler_leads.db&quot;]
+        Summary[&quot;pipeline_summaries/*.json\npipeline_state/*.json&quot;]
+    end
+
+    subgraph Supabase[&quot;Supabase Postgres&quot;]
+        Leads[&quot;biotech_leads&quot;]
+        Tickers[&quot;biotech_tickers&quot;]
+        Aliases[&quot;biotech_ticker_aliases&quot;]
+        Matches[&quot;biocrawler_ticker_matches&quot;]
+        Catalysts[&quot;cq_regulatory_catalysts&quot;]
+        Sentiment[&quot;cq_market_sentiment&quot;]
+        Bars[&quot;cq_price_bars&quot;]
+        Events[&quot;cq_market_events&quot;]
+    end
+
+    subgraph Paperclip[&quot;Paperclip Workers — localhost:3100&quot;]
+        Selector[&quot;CQ-Selector&quot;]
+        Researcher[&quot;CQ-Researcher&quot;]
+        CQMonitor[&quot;CQ-Monitor&quot;]
+        CQCTO[&quot;CQ-CTO&quot;]
+        CQCOO[&quot;CQ-COO&quot;]
+        MCOO[&quot;Meddash-COO&quot;]
+        MCTO[&quot;Meddash-CTO&quot;]
+        MMonitor[&quot;Meddash-Monitor&quot;]
+        DashMon[&quot;Dashboard-Monitor&quot;]
+        CMO[&quot;Meddash-CMO&quot;]
+        Eye[&quot;Meddash-Eye&quot;]
+        Librarian[&quot;File Index Agent&quot;]
+    end
+
+    Telegram[&quot;Telegram\nMeddash/CQ alerts + commands&quot;]
+    Sheets[&quot;Google Sheets\nBiocrawler Biotech List&quot;]
+    External[&quot;External Sources\nPubMed / ORCID / ClinicalTrials.gov / SEC EDGAR / FDA / PRNewswire / GlobeNewswire / Yahoo RSS / Alpha Vantage / Massive&quot;]
+    A0[&quot;Agent Zero CQ\nA2A reference pillar&quot;]
+
+    DrDon &lt;--&gt; Telegram
+    DrDon &lt;--&gt; Alfred
+    Alfred &lt;--&gt; Vault
+    Alfred &lt;--&gt; Graph
+    Alfred &lt;--&gt; N8N
+    Alfred &lt;--&gt; Paperclip
+    Alfred &lt;--&gt; Supabase
+    Alfred -. future/reference .-&gt; A0
+
+    MW --&gt; Ops
+    CQW --&gt; Ops
+    CMD --&gt; Ops
+    Ops --&gt; Telegram
+
+    Ops --&gt; KOL
+    Ops --&gt; CT
+    Ops --&gt; BIO
+    Ops --&gt; Health
+    Ops --&gt; Ticker
+    Ops --&gt; Yahoo
+    Ops --&gt; SEC
+    Ops --&gt; FDA
+    Ops --&gt; PR
+    Ops --&gt; Latest
+
+    External --&gt; KOL
+    External --&gt; CT
+    External --&gt; BIO
+    External --&gt; Ticker
+    External --&gt; Yahoo
+    External --&gt; SEC
+    External --&gt; FDA
+    External --&gt; PR
+
+    KOL --&gt; KOLDB
+    CT --&gt; CTDB
+    BIO --&gt; BIODB
+    KOL --&gt; Summary
+    CT --&gt; Summary
+    BIO --&gt; Summary
+
+    BIODB --&gt; Leads
+    Ticker --&gt; Tickers
+    Ticker --&gt; Aliases
+    Ticker --&gt; Matches
+    Yahoo --&gt; Sentiment
+    Yahoo --&gt; Events
+    SEC --&gt; Catalysts
+    FDA --&gt; Catalysts
+    PR --&gt; Catalysts
+    Bars -. reserved for Massive/price ingestion .-&gt; Supabase
+
+    CQW --&gt; Selector
+    CQW --&gt; CQMonitor
+    Selector --&gt; Researcher
+    Selector --&gt; Vault
+    Researcher --&gt; Vault
+    CQMonitor --&gt; Vault
+    CQCTO --&gt; CQMonitor
+    CQCOO --&gt; CQCTO
+
+    MW --&gt; MMonitor
+    MMonitor --&gt; MCTO
+    MCTO --&gt; MCOO
+    DashMon --&gt; MCTO
+    CMO --&gt; MCOO
+    Eye --&gt; MCOO
+    Librarian --&gt; Vault
+
+    BIO &lt;--&gt; Sheets</div></div>
+  <details><summary>Open Mermaid source</summary><pre>flowchart TB
+    DrDon[&quot;Dr. Don\nCEO / Human Review&quot;]
+    Alfred[&quot;Alfred Chief / Hermes\nOverseer + Fixer&quot;]
+    Vault[&quot;Hermes Agent Win Files / Obsidian\nShared Brain + SWIP4 + Logs&quot;]
+    Graph[&quot;Hermes graph memory\nTime-indexed recall&quot;]
+
+    subgraph N8N[&quot;n8n Hands — localhost:5678&quot;]
+        MW[&quot;Meddash Work Flow\n06:00 UTC schedule&quot;]
+        CQW[&quot;CQ-Free Newsletter 1100\n11:00 UTC schedule&quot;]
+        CMD[&quot;Meddash Command Listener\nEvery 10 sec Telegram poll&quot;]
+    end
+
+    Ops[&quot;Local Python Ops API\n127.0.0.1:8765&quot;]
+
+    subgraph Meddash[&quot;Meddash Engines&quot;]
+        KOL[&quot;Engine 01 KOL\nnightly_scheduler.py&quot;]
+        CT[&quot;Engine 02 CT\nct_crawler.py delta 24h&quot;]
+        BIO[&quot;Engine 03 BioCrawler\nbiocrawler.py --mode test&quot;]
+        Health[&quot;Meddash Health\nsummary JSON + DB counts&quot;]
+    end
+
+    subgraph CQ[&quot;Clinical Quant Engines&quot;]
+        Ticker[&quot;Ticker Spine\nbuild_biotech_ticker_registry.py&quot;]
+        Yahoo[&quot;Yahoo RSS Links\npull_yahoo_ticker_news.py&quot;]
+        SEC[&quot;SEC 8-K Monitor&quot;]
+        FDA[&quot;FDA PDUFA Tracker&quot;]
+        PR[&quot;PR Wire Aggregator&quot;]
+        Latest[&quot;Latest CQ Report Sender&quot;]
+    end
+
+    subgraph LocalDB[&quot;Local SQLite Datastores&quot;]
+        KOLDB[&quot;meddash_kols.db&quot;]
+        CTDB[&quot;ct_trials.db&quot;]
+        BIODB[&quot;biocrawler_leads.db&quot;]
+        Summary[&quot;pipeline_summaries/*.json\npipeline_state/*.json&quot;]
+    end
+
+    subgraph Supabase[&quot;Supabase Postgres&quot;]
+        Leads[&quot;biotech_leads&quot;]
+        Tickers[&quot;biotech_tickers&quot;]
+        Aliases[&quot;biotech_ticker_aliases&quot;]
+        Matches[&quot;biocrawler_ticker_matches&quot;]
+        Catalysts[&quot;cq_regulatory_catalysts&quot;]
+        Sentiment[&quot;cq_market_sentiment&quot;]
+        Bars[&quot;cq_price_bars&quot;]
+        Events[&quot;cq_market_events&quot;]
+    end
+
+    subgraph Paperclip[&quot;Paperclip Workers — localhost:3100&quot;]
+        Selector[&quot;CQ-Selector&quot;]
+        Researcher[&quot;CQ-Researcher&quot;]
+        CQMonitor[&quot;CQ-Monitor&quot;]
+        CQCTO[&quot;CQ-CTO&quot;]
+        CQCOO[&quot;CQ-COO&quot;]
+        MCOO[&quot;Meddash-COO&quot;]
+        MCTO[&quot;Meddash-CTO&quot;]
+        MMonitor[&quot;Meddash-Monitor&quot;]
+        DashMon[&quot;Dashboard-Monitor&quot;]
+        CMO[&quot;Meddash-CMO&quot;]
+        Eye[&quot;Meddash-Eye&quot;]
+        Librarian[&quot;File Index Agent&quot;]
+    end
+
+    Telegram[&quot;Telegram\nMeddash/CQ alerts + commands&quot;]
+    Sheets[&quot;Google Sheets\nBiocrawler Biotech List&quot;]
+    External[&quot;External Sources\nPubMed / ORCID / ClinicalTrials.gov / SEC EDGAR / FDA / PRNewswire / GlobeNewswire / Yahoo RSS / Alpha Vantage / Massive&quot;]
+    A0[&quot;Agent Zero CQ\nA2A reference pillar&quot;]
+
+    DrDon &lt;--&gt; Telegram
+    DrDon &lt;--&gt; Alfred
+    Alfred &lt;--&gt; Vault
+    Alfred &lt;--&gt; Graph
+    Alfred &lt;--&gt; N8N
+    Alfred &lt;--&gt; Paperclip
+    Alfred &lt;--&gt; Supabase
+    Alfred -. future/reference .-&gt; A0
+
+    MW --&gt; Ops
+    CQW --&gt; Ops
+    CMD --&gt; Ops
+    Ops --&gt; Telegram
+
+    Ops --&gt; KOL
+    Ops --&gt; CT
+    Ops --&gt; BIO
+    Ops --&gt; Health
+    Ops --&gt; Ticker
+    Ops --&gt; Yahoo
+    Ops --&gt; SEC
+    Ops --&gt; FDA
+    Ops --&gt; PR
+    Ops --&gt; Latest
+
+    External --&gt; KOL
+    External --&gt; CT
+    External --&gt; BIO
+    External --&gt; Ticker
+    External --&gt; Yahoo
+    External --&gt; SEC
+    External --&gt; FDA
+    External --&gt; PR
+
+    KOL --&gt; KOLDB
+    CT --&gt; CTDB
+    BIO --&gt; BIODB
+    KOL --&gt; Summary
+    CT --&gt; Summary
+    BIO --&gt; Summary
+
+    BIODB --&gt; Leads
+    Ticker --&gt; Tickers
+    Ticker --&gt; Aliases
+    Ticker --&gt; Matches
+    Yahoo --&gt; Sentiment
+    Yahoo --&gt; Events
+    SEC --&gt; Catalysts
+    FDA --&gt; Catalysts
+    PR --&gt; Catalysts
+    Bars -. reserved for Massive/price ingestion .-&gt; Supabase
+
+    CQW --&gt; Selector
+    CQW --&gt; CQMonitor
+    Selector --&gt; Researcher
+    Selector --&gt; Vault
+    Researcher --&gt; Vault
+    CQMonitor --&gt; Vault
+    CQCTO --&gt; CQMonitor
+    CQCOO --&gt; CQCTO
+
+    MW --&gt; MMonitor
+    MMonitor --&gt; MCTO
+    MCTO --&gt; MCOO
+    DashMon --&gt; MCTO
+    CMO --&gt; MCOO
+    Eye --&gt; MCOO
+    Librarian --&gt; Vault
+
+    BIO &lt;--&gt; Sheets</pre></details>
+</section>
+
+<section class="panel mermaid-panel" id="mermaid-1">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>Meddash n8n Chain</h2></div>
+  <div class="diagram-shell"><div class="mermaid">flowchart LR
+    A[&quot;Daily Schedule 06:00 UTC&quot;] --&gt; B[&quot;POST /meddash/engine01\nRun Engine 01 KOL via Ops API&quot;]
+    B --&gt; C[&quot;POST /meddash/engine02\nRun Engine 02 CT via Ops API&quot;]
+    C --&gt; D[&quot;POST /meddash/engine03\nRun Engine 03 BioCrawler via Ops API&quot;]
+    D --&gt; E[&quot;POST /meddash/health\nSend Meddash Health Telegram via Ops API&quot;]</div></div>
+  <details><summary>Open Mermaid source</summary><pre>flowchart LR
+    A[&quot;Daily Schedule 06:00 UTC&quot;] --&gt; B[&quot;POST /meddash/engine01\nRun Engine 01 KOL via Ops API&quot;]
+    B --&gt; C[&quot;POST /meddash/engine02\nRun Engine 02 CT via Ops API&quot;]
+    C --&gt; D[&quot;POST /meddash/engine03\nRun Engine 03 BioCrawler via Ops API&quot;]
+    D --&gt; E[&quot;POST /meddash/health\nSend Meddash Health Telegram via Ops API&quot;]</pre></details>
+</section>
+
+<section class="panel mermaid-panel" id="mermaid-2">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>CQ n8n Chain</h2></div>
+  <div class="diagram-shell"><div class="mermaid">flowchart LR
+    A[&quot;Daily Schedule 11:00 UTC&quot;] --&gt; B[&quot;Run CQ Ticker Spine via Ops API\nPOST /cq/ticker-spine&quot;]
+    B --&gt; C[&quot;Run CQ Detection via Ops API\nPOST /cq/detect&quot;]
+    C --&gt; D[&quot;Create CQ-Selector Paperclip Issue\nassigneeAgentId=Selector UUID&quot;]
+    C --&gt; T1[&quot;Telegram node\nCQ Engine Started&quot;]
+    D --&gt; E[&quot;Wake CQ-Selector Agent\nPOST /api/agents/Selector/wakeup&quot;]
+    D --&gt; T2[&quot;Telegram node\nCQ Selector Triggered&quot;]
+    E --&gt; F[&quot;Create CQ-Monitor Paperclip Issue\nassigneeAgentId=Monitor UUID&quot;]
+    F --&gt; G[&quot;Wake CQ-Monitor Agent\nPOST /api/agents/Monitor/wakeup&quot;]
+    G --&gt; H[&quot;Send Latest CQ Report via Ops API\nPOST /cq/latest-report&quot;]</div></div>
+  <details><summary>Open Mermaid source</summary><pre>flowchart LR
+    A[&quot;Daily Schedule 11:00 UTC&quot;] --&gt; B[&quot;Run CQ Ticker Spine via Ops API\nPOST /cq/ticker-spine&quot;]
+    B --&gt; C[&quot;Run CQ Detection via Ops API\nPOST /cq/detect&quot;]
+    C --&gt; D[&quot;Create CQ-Selector Paperclip Issue\nassigneeAgentId=Selector UUID&quot;]
+    C --&gt; T1[&quot;Telegram node\nCQ Engine Started&quot;]
+    D --&gt; E[&quot;Wake CQ-Selector Agent\nPOST /api/agents/Selector/wakeup&quot;]
+    D --&gt; T2[&quot;Telegram node\nCQ Selector Triggered&quot;]
+    E --&gt; F[&quot;Create CQ-Monitor Paperclip Issue\nassigneeAgentId=Monitor UUID&quot;]
+    F --&gt; G[&quot;Wake CQ-Monitor Agent\nPOST /api/agents/Monitor/wakeup&quot;]
+    G --&gt; H[&quot;Send Latest CQ Report via Ops API\nPOST /cq/latest-report&quot;]</pre></details>
+</section>
+
+<section class="panel mermaid-panel" id="mermaid-3">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>Telegram Polling Chain</h2></div>
+  <div class="diagram-shell"><div class="mermaid">flowchart LR
+    A[&quot;Every 10 Seconds&quot;] --&gt; B[&quot;Poll Telegram Commands via Ops API\nPOST /telegram/poll&quot;]
+    B --&gt; C[&quot;meddash_command_poll_once.py&quot;]
+    C --&gt; D[&quot;Telegram getUpdates/sendMessage\nvia Ops API token config&quot;]</div></div>
+  <details><summary>Open Mermaid source</summary><pre>flowchart LR
+    A[&quot;Every 10 Seconds&quot;] --&gt; B[&quot;Poll Telegram Commands via Ops API\nPOST /telegram/poll&quot;]
+    B --&gt; C[&quot;meddash_command_poll_once.py&quot;]
+    C --&gt; D[&quot;Telegram getUpdates/sendMessage\nvia Ops API token config&quot;]</pre></details>
+</section>
+
+<section class="panel mermaid-panel" id="mermaid-4">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>Ticker Spine ERD</h2></div>
+  <div class="diagram-shell"><div class="mermaid">erDiagram
+    biotech_tickers ||--o{ biotech_ticker_aliases : has
+    biotech_tickers ||--o{ biocrawler_ticker_matches : reverse_matches
+    biotech_tickers ||--o{ cq_market_sentiment : annotates
+    biotech_tickers ||--o{ cq_market_events : anchors
+    biotech_tickers ||--o{ cq_price_bars : prices
+    biotech_leads ||--o{ biocrawler_ticker_matches : candidate_company
+
+    biotech_tickers {
+        uuid id
+        text ticker
+        text exchange
+        text company_name
+        text company_name_normalized
+        text cik
+        bool is_biotech
+        bool is_active_listing
+        text source
+    }
+
+    biotech_ticker_aliases {
+        uuid id
+        uuid ticker_id
+        text alias
+        text alias_normalized
+        text alias_type
+        text source
+    }
+
+    biocrawler_ticker_matches {
+        uuid id
+        uuid ticker_id
+        text ticker
+        text biocrawler_company_name
+        text ticker_company_name
+        text match_method
+        text review_status
+    }
+
+    cq_market_sentiment {
+        uuid id
+        uuid ticker_id
+        text ticker
+        text source
+        text headline
+        text url
+        timestamptz published_at
+    }
+
+    cq_market_events {
+        uuid id
+        uuid ticker_id
+        text ticker
+        text event_type
+        text event_title
+        text event_url
+        text source
+    }
+
+    cq_price_bars {
+        uuid id
+        uuid ticker_id
+        text ticker
+        timestamptz bar_time
+        numeric open
+        numeric high
+        numeric low
+        numeric close
+        numeric volume
+    }</div></div>
+  <details><summary>Open Mermaid source</summary><pre>erDiagram
+    biotech_tickers ||--o{ biotech_ticker_aliases : has
+    biotech_tickers ||--o{ biocrawler_ticker_matches : reverse_matches
+    biotech_tickers ||--o{ cq_market_sentiment : annotates
+    biotech_tickers ||--o{ cq_market_events : anchors
+    biotech_tickers ||--o{ cq_price_bars : prices
+    biotech_leads ||--o{ biocrawler_ticker_matches : candidate_company
+
+    biotech_tickers {
+        uuid id
+        text ticker
+        text exchange
+        text company_name
+        text company_name_normalized
+        text cik
+        bool is_biotech
+        bool is_active_listing
+        text source
+    }
+
+    biotech_ticker_aliases {
+        uuid id
+        uuid ticker_id
+        text alias
+        text alias_normalized
+        text alias_type
+        text source
+    }
+
+    biocrawler_ticker_matches {
+        uuid id
+        uuid ticker_id
+        text ticker
+        text biocrawler_company_name
+        text ticker_company_name
+        text match_method
+        text review_status
+    }
+
+    cq_market_sentiment {
+        uuid id
+        uuid ticker_id
+        text ticker
+        text source
+        text headline
+        text url
+        timestamptz published_at
+    }
+
+    cq_market_events {
+        uuid id
+        uuid ticker_id
+        text ticker
+        text event_type
+        text event_title
+        text event_url
+        text source
+    }
+
+    cq_price_bars {
+        uuid id
+        uuid ticker_id
+        text ticker
+        timestamptz bar_time
+        numeric open
+        numeric high
+        numeric low
+        numeric close
+        numeric volume
+    }</pre></details>
+</section>
+
+<section class="panel mermaid-panel" id="mermaid-5">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>Paperclip Org</h2></div>
+  <div class="diagram-shell"><div class="mermaid">flowchart TB
+    CQCOO[&quot;CQ-COO\nglm-5.1&quot;]
+    CQCTO[&quot;CQ-CTO\nglm-5.1&quot;]
+    Selector[&quot;CQ-Selector\nglm-5&quot;]
+    Researcher[&quot;CQ-Researcher\nkimi-k2.5&quot;]
+    CQMonitor[&quot;CQ-Monitor\nministral-3:3b&quot;]
+
+    MCOO[&quot;Meddash-COO\nglm-5&quot;]
+    MCTO[&quot;Meddash-CTO\nglm-5.1&quot;]
+    MMonitor[&quot;Meddash-Monitor\ndeepseek-v4-flash&quot;]
+    Dash[&quot;Dashboard-Monitor\nministral-3:3b&quot;]
+    CMO[&quot;Meddash-CMO\nglm-4.7&quot;]
+    Eye[&quot;Meddash-Eye\nglm-5&quot;]
+    Librarian[&quot;File Index Agent\nqwen2.5:7b&quot;]
+
+    CQCOO --&gt; CQCTO
+    CQCOO --&gt; Selector
+    CQCTO --&gt; CQMonitor
+    Selector --&gt; Researcher
+
+    MCOO --&gt; MCTO
+    MCOO --&gt; CMO
+    MCOO --&gt; Eye
+    MCOO --&gt; Librarian
+    MCTO --&gt; MMonitor
+    MCTO --&gt; Dash</div></div>
+  <details><summary>Open Mermaid source</summary><pre>flowchart TB
+    CQCOO[&quot;CQ-COO\nglm-5.1&quot;]
+    CQCTO[&quot;CQ-CTO\nglm-5.1&quot;]
+    Selector[&quot;CQ-Selector\nglm-5&quot;]
+    Researcher[&quot;CQ-Researcher\nkimi-k2.5&quot;]
+    CQMonitor[&quot;CQ-Monitor\nministral-3:3b&quot;]
+
+    MCOO[&quot;Meddash-COO\nglm-5&quot;]
+    MCTO[&quot;Meddash-CTO\nglm-5.1&quot;]
+    MMonitor[&quot;Meddash-Monitor\ndeepseek-v4-flash&quot;]
+    Dash[&quot;Dashboard-Monitor\nministral-3:3b&quot;]
+    CMO[&quot;Meddash-CMO\nglm-4.7&quot;]
+    Eye[&quot;Meddash-Eye\nglm-5&quot;]
+    Librarian[&quot;File Index Agent\nqwen2.5:7b&quot;]
+
+    CQCOO --&gt; CQCTO
+    CQCOO --&gt; Selector
+    CQCTO --&gt; CQMonitor
+    Selector --&gt; Researcher
+
+    MCOO --&gt; MCTO
+    MCOO --&gt; CMO
+    MCOO --&gt; Eye
+    MCOO --&gt; Librarian
+    MCTO --&gt; MMonitor
+    MCTO --&gt; Dash</pre></details>
+</section>
+
+<section class="panel mermaid-panel" id="mermaid-6">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>Paperclip Wake Sequence</h2></div>
+  <div class="diagram-shell"><div class="mermaid">sequenceDiagram
+    participant n8n
+    participant Paperclip
+    participant Selector as CQ-Selector
+    participant Monitor as CQ-Monitor
+
+    n8n-&gt;&gt;Paperclip: POST /api/companies/{companyId}/issues assigneeAgentId=SelectorUUID
+    Paperclip--&gt;&gt;n8n: Issue JSON
+    n8n-&gt;&gt;Paperclip: POST /api/agents/{SelectorUUID}/wakeup
+    Paperclip--&gt;&gt;Selector: Wake on assigned issue
+    Selector-&gt;&gt;Paperclip: Process issue / may create child research issues
+    Selector-&gt;&gt;Paperclip: Assign child issues to CQ-Researcher
+    n8n-&gt;&gt;Paperclip: POST /api/companies/{companyId}/issues assigneeAgentId=MonitorUUID
+    Paperclip--&gt;&gt;n8n: Monitor issue JSON
+    n8n-&gt;&gt;Paperclip: POST /api/agents/{MonitorUUID}/wakeup
+    Paperclip--&gt;&gt;Monitor: Wake on assigned issue</div></div>
+  <details><summary>Open Mermaid source</summary><pre>sequenceDiagram
+    participant n8n
+    participant Paperclip
+    participant Selector as CQ-Selector
+    participant Monitor as CQ-Monitor
+
+    n8n-&gt;&gt;Paperclip: POST /api/companies/{companyId}/issues assigneeAgentId=SelectorUUID
+    Paperclip--&gt;&gt;n8n: Issue JSON
+    n8n-&gt;&gt;Paperclip: POST /api/agents/{SelectorUUID}/wakeup
+    Paperclip--&gt;&gt;Selector: Wake on assigned issue
+    Selector-&gt;&gt;Paperclip: Process issue / may create child research issues
+    Selector-&gt;&gt;Paperclip: Assign child issues to CQ-Researcher
+    n8n-&gt;&gt;Paperclip: POST /api/companies/{companyId}/issues assigneeAgentId=MonitorUUID
+    Paperclip--&gt;&gt;n8n: Monitor issue JSON
+    n8n-&gt;&gt;Paperclip: POST /api/agents/{MonitorUUID}/wakeup
+    Paperclip--&gt;&gt;Monitor: Wake on assigned issue</pre></details>
+</section>
+
+<section class="panel mermaid-panel" id="mermaid-7">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>Telegram Pattern</h2></div>
+  <div class="diagram-shell"><div class="mermaid">flowchart LR
+    T[&quot;Telegram Bot&quot;] --&gt;|getUpdates polling| Ops[&quot;Ops API /telegram/poll&quot;]
+    Ops --&gt; Poller[&quot;meddash_command_poll_once.py&quot;]
+    Poller --&gt;|sendMessage| T
+    n8n[&quot;n8n Schedule every 10s&quot;] --&gt; Ops
+    Ops --&gt; Dr[&quot;Dr. Don chat&quot;]</div></div>
+  <details><summary>Open Mermaid source</summary><pre>flowchart LR
+    T[&quot;Telegram Bot&quot;] --&gt;|getUpdates polling| Ops[&quot;Ops API /telegram/poll&quot;]
+    Ops --&gt; Poller[&quot;meddash_command_poll_once.py&quot;]
+    Poller --&gt;|sendMessage| T
+    n8n[&quot;n8n Schedule every 10s&quot;] --&gt; Ops
+    Ops --&gt; Dr[&quot;Dr. Don chat&quot;]</pre></details>
+</section>
+
+<section class="panel mermaid-panel" id="mermaid-8">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>Meddash Daily Sequence</h2></div>
+  <div class="diagram-shell"><div class="mermaid">sequenceDiagram
+    participant Clock as n8n Schedule 06:00 UTC
+    participant Ops as Ops API :8765
+    participant Runner as meddash_pipeline_runner.py
+    participant KOL as KOL Engine
+    participant CT as CT Engine
+    participant BIO as BioCrawler
+    participant DB as Local SQLite/Summary JSON
+    participant TG as Telegram
+
+    Clock-&gt;&gt;Ops: POST /meddash/engine01
+    Ops-&gt;&gt;Runner: python3 meddash_pipeline_runner.py engine01
+    Runner-&gt;&gt;KOL: bounded nightly_scheduler.py --max-targets 5 --max-results 5
+    KOL-&gt;&gt;DB: update meddash_kols.db + kol_pipeline_summary.json
+
+    Clock-&gt;&gt;Ops: POST /meddash/engine02
+    Ops-&gt;&gt;Runner: python3 meddash_pipeline_runner.py engine02
+    Runner-&gt;&gt;CT: python3 ct_crawler.py --mode delta --hours 24
+    CT-&gt;&gt;DB: update CT raw/summary; ingestion dependency must be watched
+
+    Clock-&gt;&gt;Ops: POST /meddash/engine03
+    Ops-&gt;&gt;Runner: python3 meddash_pipeline_runner.py engine03
+    Runner-&gt;&gt;BIO: python3 biocrawler.py --mode test
+    BIO-&gt;&gt;DB: update biocrawler_leads.db + summary
+
+    Clock-&gt;&gt;Ops: POST /meddash/health
+    Ops-&gt;&gt;DB: read summaries + DB counts
+    Ops-&gt;&gt;TG: send health report</div></div>
+  <details><summary>Open Mermaid source</summary><pre>sequenceDiagram
+    participant Clock as n8n Schedule 06:00 UTC
+    participant Ops as Ops API :8765
+    participant Runner as meddash_pipeline_runner.py
+    participant KOL as KOL Engine
+    participant CT as CT Engine
+    participant BIO as BioCrawler
+    participant DB as Local SQLite/Summary JSON
+    participant TG as Telegram
+
+    Clock-&gt;&gt;Ops: POST /meddash/engine01
+    Ops-&gt;&gt;Runner: python3 meddash_pipeline_runner.py engine01
+    Runner-&gt;&gt;KOL: bounded nightly_scheduler.py --max-targets 5 --max-results 5
+    KOL-&gt;&gt;DB: update meddash_kols.db + kol_pipeline_summary.json
+
+    Clock-&gt;&gt;Ops: POST /meddash/engine02
+    Ops-&gt;&gt;Runner: python3 meddash_pipeline_runner.py engine02
+    Runner-&gt;&gt;CT: python3 ct_crawler.py --mode delta --hours 24
+    CT-&gt;&gt;DB: update CT raw/summary; ingestion dependency must be watched
+
+    Clock-&gt;&gt;Ops: POST /meddash/engine03
+    Ops-&gt;&gt;Runner: python3 meddash_pipeline_runner.py engine03
+    Runner-&gt;&gt;BIO: python3 biocrawler.py --mode test
+    BIO-&gt;&gt;DB: update biocrawler_leads.db + summary
+
+    Clock-&gt;&gt;Ops: POST /meddash/health
+    Ops-&gt;&gt;DB: read summaries + DB counts
+    Ops-&gt;&gt;TG: send health report</pre></details>
+</section>
+
+<section class="panel mermaid-panel" id="mermaid-9">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>CQ Daily Sequence</h2></div>
+  <div class="diagram-shell"><div class="mermaid">sequenceDiagram
+    participant Clock as n8n Schedule 11:00 UTC
+    participant Ops as Ops API :8765
+    participant CQ as cq_pipeline_runner.py
+    participant SDB as Supabase
+    participant PC as Paperclip API :3100
+    participant Sel as CQ-Selector
+    participant Res as CQ-Researcher
+    participant Mon as CQ-Monitor
+    participant Vault as Obsidian/Hermes Vault
+    participant TG as Telegram
+
+    Clock-&gt;&gt;Ops: POST /cq/ticker-spine
+    Ops-&gt;&gt;CQ: python3 cq_pipeline_runner.py ticker_spine
+    CQ-&gt;&gt;SDB: upsert biotech_tickers, aliases, biocrawler_ticker_matches
+    Ops-&gt;&gt;TG: ticker spine finished
+
+    Clock-&gt;&gt;Ops: POST /cq/detect
+    Ops-&gt;&gt;CQ: python3 cq_pipeline_runner.py detect
+    CQ-&gt;&gt;SDB: refresh ticker spine
+    CQ-&gt;&gt;SDB: write Yahoo RSS links to cq_market_sentiment/cq_market_events
+    CQ-&gt;&gt;SDB: run SEC/FDA/PR detection against verified ticker spine
+    Ops-&gt;&gt;TG: detection finished
+
+    Clock-&gt;&gt;PC: POST /companies/{company}/issues assigneeAgentId=Selector
+    PC--&gt;&gt;Clock: issue JSON
+    Clock-&gt;&gt;PC: POST /agents/{Selector}/wakeup
+    PC--&gt;&gt;Sel: assigned issue wake
+    Sel-&gt;&gt;SDB: read catalysts/events/tickers
+    Sel-&gt;&gt;Vault: read posted-events log and write draft/research notes
+    Sel-&gt;&gt;PC: create child issues for Researcher if needed
+    Sel-&gt;&gt;Res: assign deep verification child issues
+
+    Clock-&gt;&gt;PC: POST /companies/{company}/issues assigneeAgentId=Monitor
+    PC--&gt;&gt;Clock: monitor issue JSON
+    Clock-&gt;&gt;PC: POST /agents/{Monitor}/wakeup
+    PC--&gt;&gt;Mon: QA wake
+    Mon-&gt;&gt;SDB: verify current data counts/signals
+    Mon-&gt;&gt;Vault: write logs/audit notes
+
+    Clock-&gt;&gt;Ops: POST /cq/latest-report
+    Ops-&gt;&gt;Vault: read latest CQ report path if present
+    Ops-&gt;&gt;TG: send latest CQ update preview</div></div>
+  <details><summary>Open Mermaid source</summary><pre>sequenceDiagram
+    participant Clock as n8n Schedule 11:00 UTC
+    participant Ops as Ops API :8765
+    participant CQ as cq_pipeline_runner.py
+    participant SDB as Supabase
+    participant PC as Paperclip API :3100
+    participant Sel as CQ-Selector
+    participant Res as CQ-Researcher
+    participant Mon as CQ-Monitor
+    participant Vault as Obsidian/Hermes Vault
+    participant TG as Telegram
+
+    Clock-&gt;&gt;Ops: POST /cq/ticker-spine
+    Ops-&gt;&gt;CQ: python3 cq_pipeline_runner.py ticker_spine
+    CQ-&gt;&gt;SDB: upsert biotech_tickers, aliases, biocrawler_ticker_matches
+    Ops-&gt;&gt;TG: ticker spine finished
+
+    Clock-&gt;&gt;Ops: POST /cq/detect
+    Ops-&gt;&gt;CQ: python3 cq_pipeline_runner.py detect
+    CQ-&gt;&gt;SDB: refresh ticker spine
+    CQ-&gt;&gt;SDB: write Yahoo RSS links to cq_market_sentiment/cq_market_events
+    CQ-&gt;&gt;SDB: run SEC/FDA/PR detection against verified ticker spine
+    Ops-&gt;&gt;TG: detection finished
+
+    Clock-&gt;&gt;PC: POST /companies/{company}/issues assigneeAgentId=Selector
+    PC--&gt;&gt;Clock: issue JSON
+    Clock-&gt;&gt;PC: POST /agents/{Selector}/wakeup
+    PC--&gt;&gt;Sel: assigned issue wake
+    Sel-&gt;&gt;SDB: read catalysts/events/tickers
+    Sel-&gt;&gt;Vault: read posted-events log and write draft/research notes
+    Sel-&gt;&gt;PC: create child issues for Researcher if needed
+    Sel-&gt;&gt;Res: assign deep verification child issues
+
+    Clock-&gt;&gt;PC: POST /companies/{company}/issues assigneeAgentId=Monitor
+    PC--&gt;&gt;Clock: monitor issue JSON
+    Clock-&gt;&gt;PC: POST /agents/{Monitor}/wakeup
+    PC--&gt;&gt;Mon: QA wake
+    Mon-&gt;&gt;SDB: verify current data counts/signals
+    Mon-&gt;&gt;Vault: write logs/audit notes
+
+    Clock-&gt;&gt;Ops: POST /cq/latest-report
+    Ops-&gt;&gt;Vault: read latest CQ report path if present
+    Ops-&gt;&gt;TG: send latest CQ update preview</pre></details>
+</section>
+
+<section class="panel mermaid-panel" id="mermaid-10">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>Trigger Surface</h2></div>
+  <div class="diagram-shell"><div class="mermaid">flowchart TD
+    subgraph Triggers[&quot;Trigger Surface&quot;]
+        T1[&quot;n8n Meddash Schedule\n06:00 UTC&quot;]
+        T2[&quot;n8n CQ Schedule\n11:00 UTC&quot;]
+        T3[&quot;n8n Telegram Poll\nevery 10 sec&quot;]
+        T4[&quot;Alfred manual CLI sessions&quot;]
+        T5[&quot;Paperclip heartbeats&quot;]
+    end
+
+    subgraph Ops[&quot;Execution/Agent Layer&quot;]
+        API[&quot;Meddash Ops API :8765&quot;]
+        PC[&quot;Paperclip :3100&quot;]
+        Hermes[&quot;Hermes/Alfred&quot;]
+    end
+
+    subgraph Data[&quot;Data Stores&quot;]
+        LDB[&quot;Local SQLite DBs&quot;]
+        SDB[&quot;Supabase&quot;]
+        Vault[&quot;Obsidian/Hermes Vault&quot;]
+        Sheets[&quot;Google Sheets&quot;]
+    end
+
+    T1 --&gt; API
+    T2 --&gt; API
+    T3 --&gt; API
+    T4 --&gt; API
+    T4 --&gt; PC
+    T4 --&gt; Data
+    T5 --&gt; PC
+
+    API --&gt; LDB
+    API --&gt; SDB
+    API --&gt; PC
+    API --&gt; Vault
+    API --&gt; Sheets
+    PC --&gt; Vault
+    Hermes --&gt; Vault
+    Hermes --&gt; SDB
+    Hermes --&gt; LDB</div></div>
+  <details><summary>Open Mermaid source</summary><pre>flowchart TD
+    subgraph Triggers[&quot;Trigger Surface&quot;]
+        T1[&quot;n8n Meddash Schedule\n06:00 UTC&quot;]
+        T2[&quot;n8n CQ Schedule\n11:00 UTC&quot;]
+        T3[&quot;n8n Telegram Poll\nevery 10 sec&quot;]
+        T4[&quot;Alfred manual CLI sessions&quot;]
+        T5[&quot;Paperclip heartbeats&quot;]
+    end
+
+    subgraph Ops[&quot;Execution/Agent Layer&quot;]
+        API[&quot;Meddash Ops API :8765&quot;]
+        PC[&quot;Paperclip :3100&quot;]
+        Hermes[&quot;Hermes/Alfred&quot;]
+    end
+
+    subgraph Data[&quot;Data Stores&quot;]
+        LDB[&quot;Local SQLite DBs&quot;]
+        SDB[&quot;Supabase&quot;]
+        Vault[&quot;Obsidian/Hermes Vault&quot;]
+        Sheets[&quot;Google Sheets&quot;]
+    end
+
+    T1 --&gt; API
+    T2 --&gt; API
+    T3 --&gt; API
+    T4 --&gt; API
+    T4 --&gt; PC
+    T4 --&gt; Data
+    T5 --&gt; PC
+
+    API --&gt; LDB
+    API --&gt; SDB
+    API --&gt; PC
+    API --&gt; Vault
+    API --&gt; Sheets
+    PC --&gt; Vault
+    Hermes --&gt; Vault
+    Hermes --&gt; SDB
+    Hermes --&gt; LDB</pre></details>
+</section>
+
+<section class="panel mermaid-panel" id="mermaid-11">
+  <div class="section-head"><span class="eyebrow">Mermaid Render</span><h2>Canonical Data Direction</h2></div>
+  <div class="diagram-shell"><div class="mermaid">flowchart LR
+    Market[&quot;Market/security sources\nAlpha Vantage listing + SEC ticker/CIK&quot;] --&gt; Tickers[&quot;biotech_tickers\ncanonical ticker IDs&quot;]
+    Tickers --&gt; Aliases[&quot;biotech_ticker_aliases&quot;]
+    Tickers --&gt; Matches[&quot;biocrawler_ticker_matches\nreverse matching&quot;]
+    Bio[&quot;BioCrawler companies\nlocal + Supabase biotech_leads&quot;] --&gt; Matches
+    Tickers --&gt; News[&quot;Yahoo RSS / PR / SEC / FDA\nverified ticker scans&quot;]
+    News --&gt; Events[&quot;cq_market_events\ncq_market_sentiment\ncq_regulatory_catalysts&quot;]
+    Events --&gt; Selector[&quot;CQ-Selector\nselection + newsletter reasoning&quot;]
+    Selector --&gt; Draft[&quot;CQ daily brief / Telegram / Obsidian&quot;]
+
+    Bad[&quot;BioCrawler company name\n→ fuzzy ticker guess&quot;] -. forbidden .-&gt; News</div></div>
+  <details><summary>Open Mermaid source</summary><pre>flowchart LR
+    Market[&quot;Market/security sources\nAlpha Vantage listing + SEC ticker/CIK&quot;] --&gt; Tickers[&quot;biotech_tickers\ncanonical ticker IDs&quot;]
+    Tickers --&gt; Aliases[&quot;biotech_ticker_aliases&quot;]
+    Tickers --&gt; Matches[&quot;biocrawler_ticker_matches\nreverse matching&quot;]
+    Bio[&quot;BioCrawler companies\nlocal + Supabase biotech_leads&quot;] --&gt; Matches
+    Tickers --&gt; News[&quot;Yahoo RSS / PR / SEC / FDA\nverified ticker scans&quot;]
+    News --&gt; Events[&quot;cq_market_events\ncq_market_sentiment\ncq_regulatory_catalysts&quot;]
+    Events --&gt; Selector[&quot;CQ-Selector\nselection + newsletter reasoning&quot;]
+    Selector --&gt; Draft[&quot;CQ daily brief / Telegram / Obsidian&quot;]
+
+    Bad[&quot;BioCrawler company name\n→ fuzzy ticker guess&quot;] -. forbidden .-&gt; News</pre></details>
+</section>
+
+<section class="panel searchable" id="source"><div class="section-head"><div><span class="eyebrow">Audit Appendix</span><h2>Full Source Architecture Markdown</h2><p class="sub">Included verbatim so the HTML is complete and auditable even if visual sections compress detail.</p></div></div><pre># MDP3 Current Architecture — Meddash + Clinical Quant
+
+Generated: 2026-04-29 02:15 EDT
+File: `mdp3.architecture.20260429-0215.md`
+Scope: current live architecture after ticker-spine reversal, n8n simplification, Paperclip trigger corrections, Supabase market tables, CQ runner coupling, Ops API consolidation, C-run verification fixes, bounded scheduled KOL lane, SEC timeout bounding, Streamlit dashboard auto-refresh repair, and centralized Telegram authority.
+
+This is the operational architecture snapshot for Meddash Phase 3. It maps the actual working system as of this timestamp, including n8n, local Ops API, Meddash engines, CQ engines, Supabase, local SQLite stores, Paperclip agents, Telegram, Hermes/Alfred, Obsidian vaults, and Agent Zero CQ reference pillar.
+
+Secrets are intentionally omitted. Credential values, API keys, bot tokens, service-role keys, connection strings, and Paperclip bearer tokens are represented only as `[REDACTED]` or by non-secret endpoint/path names.
+
+---
+
+## 0. Executive Summary
+
+The Meddash/CQ system is now a four-pillar operating system:
+
+1. **n8n = Hands**
+   - Schedules deterministic workflows.
+   - Calls local HTTP endpoints only.
+   - No Code-node `require()` execution.
+   - No Execute Command dependency.
+   - No Telegram Trigger webhooks.
+
+2. **Local Python Ops API = Execution Router**
+   - Runs local scripts from WSL.
+   - Owns subprocess execution, timeouts, Telegram sends, and health checks.
+   - Lives at `http://127.0.0.1:8765`.
+
+3. **Paperclip = Worker/Agent Factory**
+   - Receives assigned issues from n8n.
+   - Agents perform bounded reasoning, review, selection, QA, and monitoring.
+   - Critical fixed rule: n8n must use `assigneeAgentId` with full UUID and explicitly wake agents.
+
+4. **Alfred/Hermes + Obsidian = Overseer + Brain**
+   - Alfred fixes, documents, and orchestrates.
+   - Obsidian/Hermes vault is durable memory and operational index.
+   - SWIP4 remains the tactical implementation ledger.
+
+Meddash and Clinical Quant share the same backend spine but produce different products:
+
+- **Meddash:** KOL intelligence, clinical-trial intelligence, biotech GTM/company intelligence, KOL briefs, TA landscapes, dashboard/product assets.
+- **Clinical Quant:** daily biotech catalyst/newsletter intelligence using SEC/FDA/PR/news/ticker signals and Paperclip reasoning.
+
+The major architectural reversal completed today:
+
+`Market/security source → biotech_tickers → CQ market/news/SEC/PR/FDA → reverse-match BioCrawler/clinical-trials`
+
+Rejected old path:
+
+`BioCrawler company name → fuzzy ticker guess → market/SEC/news pull`
+
+---
+
+## 1. Live Service Status Snapshot
+
+| Service | Endpoint / Path | Current status verified | Notes |
+|---|---|---:|---|
+| n8n | `http://127.0.0.1:5678/` | HTTP 200, workflows inactive | DB workflows currently show `active=0`; C-run was verified directly through Ops API. User should toggle intended workflows active in UI for schedules. |
+| Meddash Ops API | `http://127.0.0.1:8765/health` | OK; `/meddash/health` green | Routes Meddash, CQ, Telegram, and health calls. Latest verification: `kol_pipeline`, `ct_delta`, and `biocrawler` all `success`; Telegram OK. |
+| Paperclip | `http://127.0.0.1:3100/api/companies/.../agents` | HTTP 200 | Company ID: `cf39ae28-5bd5-44d1-b888-b01f83192fd5`. |
+| Supabase | via CQ `.env` `SUPABASE_URI` | Connected | Secrets not printed. New ticker tables live. |
+| Telegram | centralized through Ops API | Verified OK | Bot token/chat ID are not documented here. Ops API is authoritative notification lane; internal per-engine Telegram calls are legacy/noisy and should remain disabled/cleaned. |
+| Hermes vault | `/mnt/c/Users/email/Hermes Agent Win Files/` | Canonical brain | Read `SCHEMA.md` + `index.md` first for deep queries. |
+| Agent Zero CQ | `http://127.0.0.1:5081/`, `/a2a/` | Reference pillar, constrained | Wiki notes stale/non-functional model endpoints until cleaned. |
+
+Important active-state warning:
+
+- The n8n SQLite `workflow_entity.active` value is currently `0` for:
+  - `Meddash Work Flow`
+  - `CQ-Free Newsletter 1100`
+  - `Meddash Command Listener`
+- Because n8n trigger activation is not reliably established by DB writes alone, after these architecture/trigger patches the safe operational step is: open n8n UI, hard refresh, toggle each intended workflow OFF then ON.
+
+---
+
+## 2. Top-Level Mermaid Architecture
+
+```mermaid
+flowchart TB
+    DrDon[&quot;Dr. Don
+CEO / Human Review&quot;]
+    Alfred[&quot;Alfred Chief / Hermes
+Overseer + Fixer&quot;]
+    Vault[&quot;Hermes Agent Win Files / Obsidian
+Shared Brain + SWIP4 + Logs&quot;]
+    Graph[&quot;Hermes graph memory
+Time-indexed recall&quot;]
+
+    subgraph N8N[&quot;n8n Hands — localhost:5678&quot;]
+        MW[&quot;Meddash Work Flow
+06:00 UTC schedule&quot;]
+        CQW[&quot;CQ-Free Newsletter 1100
+11:00 UTC schedule&quot;]
+        CMD[&quot;Meddash Command Listener
+Every 10 sec Telegram poll&quot;]
+    end
+
+    Ops[&quot;Local Python Ops API
+127.0.0.1:8765&quot;]
+
+    subgraph Meddash[&quot;Meddash Engines&quot;]
+        KOL[&quot;Engine 01 KOL
+bounded scheduled mode
+5 targets x 5 results&quot;]
+        CT[&quot;Engine 02 CT
+ct_crawler.py delta 24h&quot;]
+        BIO[&quot;Engine 03 BioCrawler
+biocrawler.py --mode test&quot;]
+        Health[&quot;Meddash Health
+summary JSON + DB counts&quot;]
+    end
+
+    subgraph CQ[&quot;Clinical Quant Engines&quot;]
+        Ticker[&quot;Ticker Spine
+build_biotech_ticker_registry.py&quot;]
+        Yahoo[&quot;Yahoo RSS Links
+pull_yahoo_ticker_news.py&quot;]
+        SEC[&quot;SEC 8-K Monitor
+bounded SEC timeout + scan cap&quot;]
+        FDA[&quot;FDA PDUFA Tracker&quot;]
+        PR[&quot;PR Wire Aggregator&quot;]
+        Latest[&quot;Latest CQ Report Sender&quot;]
+    end
+
+    subgraph LocalDB[&quot;Local SQLite Datastores&quot;]
+        KOLDB[&quot;meddash_kols.db&quot;]
+        CTDB[&quot;ct_trials.db&quot;]
+        BIODB[&quot;biocrawler_leads.db&quot;]
+        Summary[&quot;pipeline_summaries/*.json
+pipeline_state/*.json&quot;]
+    end
+
+    subgraph Supabase[&quot;Supabase Postgres&quot;]
+        Leads[&quot;biotech_leads&quot;]
+        Tickers[&quot;biotech_tickers&quot;]
+        Aliases[&quot;biotech_ticker_aliases&quot;]
+        Matches[&quot;biocrawler_ticker_matches&quot;]
+        Catalysts[&quot;cq_regulatory_catalysts&quot;]
+        Sentiment[&quot;cq_market_sentiment&quot;]
+        Bars[&quot;cq_price_bars&quot;]
+        Events[&quot;cq_market_events&quot;]
+    end
+
+    subgraph Paperclip[&quot;Paperclip Workers — localhost:3100&quot;]
+        Selector[&quot;CQ-Selector&quot;]
+        Researcher[&quot;CQ-Researcher&quot;]
+        CQMonitor[&quot;CQ-Monitor&quot;]
+        CQCTO[&quot;CQ-CTO&quot;]
+        CQCOO[&quot;CQ-COO&quot;]
+        MCOO[&quot;Meddash-COO&quot;]
+        MCTO[&quot;Meddash-CTO&quot;]
+        MMonitor[&quot;Meddash-Monitor&quot;]
+        DashMon[&quot;Dashboard-Monitor&quot;]
+        CMO[&quot;Meddash-CMO&quot;]
+        Eye[&quot;Meddash-Eye&quot;]
+        Librarian[&quot;File Index Agent&quot;]
+    end
+
+    Telegram[&quot;Telegram
+Meddash/CQ alerts + commands&quot;]
+    Sheets[&quot;Google Sheets
+Biocrawler Biotech List&quot;]
+    External[&quot;External Sources
+PubMed / ORCID / ClinicalTrials.gov / SEC EDGAR / FDA / PRNewswire / GlobeNewswire / Yahoo RSS / Alpha Vantage / Massive&quot;]
+    A0[&quot;Agent Zero CQ
+A2A reference pillar&quot;]
+
+    DrDon &lt;--&gt; Telegram
+    DrDon &lt;--&gt; Alfred
+    Alfred &lt;--&gt; Vault
+    Alfred &lt;--&gt; Graph
+    Alfred &lt;--&gt; N8N
+    Alfred &lt;--&gt; Paperclip
+    Alfred &lt;--&gt; Supabase
+    Alfred -. future/reference .-&gt; A0
+
+    MW --&gt; Ops
+    CQW --&gt; Ops
+    CMD --&gt; Ops
+    Ops --&gt; Telegram
+
+    Ops --&gt; KOL
+    Ops --&gt; CT
+    Ops --&gt; BIO
+    Ops --&gt; Health
+    Ops --&gt; Ticker
+    Ops --&gt; Yahoo
+    Ops --&gt; SEC
+    Ops --&gt; FDA
+    Ops --&gt; PR
+    Ops --&gt; Latest
+
+    External --&gt; KOL
+    External --&gt; CT
+    External --&gt; BIO
+    External --&gt; Ticker
+    External --&gt; Yahoo
+    External --&gt; SEC
+    External --&gt; FDA
+    External --&gt; PR
+
+    KOL --&gt; KOLDB
+    CT --&gt; CTDB
+    BIO --&gt; BIODB
+    KOL --&gt; Summary
+    CT --&gt; Summary
+    BIO --&gt; Summary
+
+    BIODB --&gt; Leads
+    Ticker --&gt; Tickers
+    Ticker --&gt; Aliases
+    Ticker --&gt; Matches
+    Yahoo --&gt; Sentiment
+    Yahoo --&gt; Events
+    SEC --&gt; Catalysts
+    FDA --&gt; Catalysts
+    PR --&gt; Catalysts
+    Bars -. reserved for Massive/price ingestion .-&gt; Supabase
+
+    CQW --&gt; Selector
+    CQW --&gt; CQMonitor
+    Selector --&gt; Researcher
+    Selector --&gt; Vault
+    Researcher --&gt; Vault
+    CQMonitor --&gt; Vault
+    CQCTO --&gt; CQMonitor
+    CQCOO --&gt; CQCTO
+
+    MW --&gt; MMonitor
+    MMonitor --&gt; MCTO
+    MCTO --&gt; MCOO
+    DashMon --&gt; MCTO
+    CMO --&gt; MCOO
+    Eye --&gt; MCOO
+    Librarian --&gt; Vault
+
+    BIO &lt;--&gt; Sheets
+```
+
+---
+
+## 3. n8n Instance — Live Workflows
+
+n8n database:
+
+`/home/doc_victus/.n8n/database.sqlite`
+
+n8n UI:
+
+`http://127.0.0.1:5678/`
+
+Current rule:
+
+- n8n must stay simple.
+- It should schedule and call local HTTP endpoints only.
+- Local Python owns execution.
+- Avoid Code nodes with `require()`.
+- Avoid Execute Command nodes in this install.
+- Avoid Telegram Trigger on localhost.
+- Avoid scattered Telegram nodes where Ops API can centralize delivery.
+
+### 3.1 Meddash Work Flow
+
+Workflow ID: `QMwgjPEngkfq6vgD`
+Current DB active flag: `0`
+Schedule node: `Daily Schedule 06:00 UTC`
+Purpose: daily Meddash local data refresh + health Telegram.
+
+Live node chain:
+
+```mermaid
+flowchart LR
+    A[&quot;Daily Schedule 06:00 UTC&quot;] --&gt; B[&quot;POST /meddash/engine01
+Run Engine 01 KOL via Ops API&quot;]
+    B --&gt; C[&quot;POST /meddash/engine02
+Run Engine 02 CT via Ops API&quot;]
+    C --&gt; D[&quot;POST /meddash/engine03
+Run Engine 03 BioCrawler via Ops API&quot;]
+    D --&gt; E[&quot;POST /meddash/health
+Send Meddash Health Telegram via Ops API&quot;]
+```
+
+Granular steps:
+
+1. n8n schedule fires at 06:00 UTC.
+2. n8n HTTP Request calls `POST http://127.0.0.1:8765/meddash/engine01`.
+3. Ops API runs `python3 meddash_pipeline_runner.py engine01`.
+4. Runner executes bounded scheduled KOL command in `01_KOL_Data_Engine/`: `python3 nightly_scheduler.py --max-targets 5 --max-results 5 --skip-disambiguation --skip-weights --skip-centrality --json-summary`.
+5. KOL engine updates local KOL/publication freshness and `kol_pipeline_summary.json`; full disambiguation/weights/centrality remain manual/deep lanes.
+6. n8n calls `POST /meddash/engine02`.
+7. Ops API runs `python3 meddash_pipeline_runner.py engine02`.
+8. Runner executes `python3 ct_crawler.py --mode delta --hours 24` in `02_CT_Data_Engine/`.
+9. CT engine updates local trial raw/structured data and `ct_crawler_summary.json`, the canonical CT health summary file.
+10. n8n calls `POST /meddash/engine03`.
+11. Ops API runs `python3 meddash_pipeline_runner.py engine03`.
+12. Runner executes `python3 biocrawler.py --mode test` in `03_BioCrawler_GTM/`.
+13. BioCrawler updates local biotech company/lead intelligence.
+14. n8n calls `POST /meddash/health`.
+15. Ops API reads local summary JSONs and SQLite counts.
+16. Ops API sends Telegram health text to Dr. Don.
+17. n8n execution ends.
+
+### 3.2 CQ-Free Newsletter 1100
+
+Workflow ID: `dfb3zednYhdcdqxE`
+Current DB active flag: `0`
+Schedule node: `Daily Schedule 11:00 UTC`
+Purpose: refresh ticker spine, run CQ catalyst detection, trigger Paperclip Selector + Monitor, send latest report.
+
+Live node chain after final patch:
+
+```mermaid
+flowchart LR
+    A[&quot;Daily Schedule 11:00 UTC&quot;] --&gt; B[&quot;Run CQ Ticker Spine via Ops API
+POST /cq/ticker-spine&quot;]
+    B --&gt; C[&quot;Run CQ Detection via Ops API
+POST /cq/detect&quot;]
+    C --&gt; D[&quot;Create CQ-Selector Paperclip Issue
+assigneeAgentId=Selector UUID&quot;]
+    C --&gt; T1[&quot;Telegram node
+CQ Engine Started&quot;]
+    D --&gt; E[&quot;Wake CQ-Selector Agent
+POST /api/agents/Selector/wakeup&quot;]
+    D --&gt; T2[&quot;Telegram node
+CQ Selector Triggered&quot;]
+    E --&gt; F[&quot;Create CQ-Monitor Paperclip Issue
+assigneeAgentId=Monitor UUID&quot;]
+    F --&gt; G[&quot;Wake CQ-Monitor Agent
+POST /api/agents/Monitor/wakeup&quot;]
+    G --&gt; H[&quot;Send Latest CQ Report via Ops API
+POST /cq/latest-report&quot;]
+```
+
+Granular steps:
+
+1. n8n schedule fires at 11:00 UTC.
+2. n8n calls `POST http://127.0.0.1:8765/cq/ticker-spine`.
+3. Ops API runs `python3 cq_pipeline_runner.py ticker_spine`.
+4. CQ runner runs `build_biotech_ticker_registry.py`.
+5. Ticker spine refreshes Alpha Vantage listing data + SEC ticker/CIK map.
+6. Ticker spine writes/upserts:
+   - `biotech_tickers`
+   - `biotech_ticker_aliases`
+   - `biocrawler_ticker_matches`
+7. n8n calls `POST http://127.0.0.1:8765/cq/detect`.
+8. Ops API runs `python3 cq_pipeline_runner.py detect`.
+9. CQ runner performs optional/non-fatal refreshes first:
+   - `build_biotech_ticker_registry.py`
+   - `pull_yahoo_ticker_news.py 40`
+10. Yahoo RSS collector stores link-level metadata only:
+   - `cq_market_sentiment`
+   - `cq_market_events`
+11. CQ runner runs required Phase 1 detection scripts:
+   - `sec_8k_monitor.py`
+   - `fda_pdufa_tracker.py`
+   - `pr_wire_aggregator.py`
+12. SEC/FDA/PR scripts read verified ticker-spine targets/aliases rather than unsafe `biotech_leads.ticker` guesses. SEC 8-K is bounded with per-request timeout and `CQ_SEC_MAX_TICKERS` daily cap.
+13. Scripts write catalyst/news/event data to Supabase tables where implemented.
+14. Ops API sends Telegram: CQ detection finished.
+15. n8n creates a Paperclip issue for CQ-Selector:
+   - URL: `POST http://localhost:3100/api/companies/cf39ae28-5bd5-44d1-b888-b01f83192fd5/issues`
+   - Title: `CQ Daily Catalyst Selection`
+   - Priority: `high`
+   - Assignment: `assigneeAgentId = 31049770-807e-4e82-9a87-15ccdb43845f`
+16. n8n sends Telegram side alert: `CQ Engine Started`.
+17. n8n wakes CQ-Selector explicitly:
+   - `POST http://localhost:3100/api/agents/31049770-807e-4e82-9a87-15ccdb43845f/wakeup`
+18. n8n sends Telegram side alert: `CQ Selector Triggered`.
+19. n8n creates Paperclip issue for CQ-Monitor:
+   - Title: `CQ Daily QA Verification`
+   - Priority: `medium`
+   - Assignment: `assigneeAgentId = bb9deb04-97d7-4f35-89bc-130f67d8f759`
+20. n8n wakes CQ-Monitor explicitly:
+   - `POST http://localhost:3100/api/agents/bb9deb04-97d7-4f35-89bc-130f67d8f759/wakeup`
+21. n8n calls `POST /cq/latest-report`.
+22. Ops API reads newest `cq-daily-update-*.md` from:
+   - `/mnt/c/Users/email/.gemini/antigravity/CEO Notes/CQ Daily Update/`
+23. Ops API sends CQ daily update preview to Telegram.
+24. Paperclip agents continue issue processing, research, selection, writing, and logging asynchronously.
+
+### 3.3 Meddash Command Listener
+
+Workflow ID: `VgOjInsEaeFBDIR9`
+Current DB active flag: `0`
+Schedule node: `Every 10 Seconds`
+Purpose: poll Telegram commands through local Ops API, avoiding Telegram webhooks.
+
+Live node chain:
+
+```mermaid
+flowchart LR
+    A[&quot;Every 10 Seconds&quot;] --&gt; B[&quot;Poll Telegram Commands via Ops API
+POST /telegram/poll&quot;]
+    B --&gt; C[&quot;meddash_command_poll_once.py&quot;]
+    C --&gt; D[&quot;Telegram getUpdates/sendMessage
+via Ops API token config&quot;]
+```
+
+Granular steps:
+
+1. n8n schedule fires every 10 seconds.
+2. n8n calls `POST http://127.0.0.1:8765/telegram/poll`.
+3. Ops API runs `python3 meddash_command_poll_once.py`.
+4. Poller reads Telegram updates using local offset file:
+   - `/tmp/meddash_telegram_offset.txt`
+5. Poller parses supported slash commands.
+6. Poller sends response through Telegram HTTP API.
+7. Poller saves latest processed offset.
+
+### 3.4 Disabled/Old n8n Workflow
+
+Workflow: `Meddash Command Listener OLD DISABLED`
+ID: `15007d29-ce68-4422-842d-006c9023ee5c`
+Status: inactive old design.
+
+Reason it is no longer canonical:
+
+- Used Code nodes.
+- Had direct Telegram logic.
+- Replaced by HTTP-only `Meddash Command Listener` using Ops API.
+
+---
+
+## 4. Local Ops API — Execution Router
+
+Path:
+
+`/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/07_DevOps_Observability/meddash_ops_api.py`
+
+Host/port:
+
+`http://127.0.0.1:8765`
+
+Routes:
+
+| Method | Route | Action |
+|---|---|---|
+| GET | `/health` | Return Ops API health JSON. |
+| POST | `/telegram/test` | Send Telegram test message. |
+| POST | `/telegram/poll` | Run Telegram command poller. |
+| POST | `/meddash/engine01` | Run bounded scheduled KOL lane via Meddash runner; verified success in `122.95s`. |
+| POST | `/meddash/engine02` | Run CT delta engine via Meddash runner. |
+| POST | `/meddash/engine03` | Run bounded BioCrawler via Meddash runner. |
+| POST | `/meddash/health` | Read local summaries/DB counts and send Telegram health report. |
+| POST | `/cq/ticker-spine` | Run CQ ticker-spine refresh only. |
+| POST | `/cq/detect` | Run ticker spine + Yahoo news + SEC/FDA/PR detectors. |
+| POST | `/cq/latest-report` | Send latest CQ report preview to Telegram. |
+
+Important implementation details:
+
+- Uses `ThreadingHTTPServer`.
+- Wraps subprocesses with timeout and captures stdout/stderr tail.
+- Handles `BrokenPipeError` and `ConnectionResetError` so n8n/browser disconnections do not crash API.
+- Centralizes Telegram sends so scripts do not scatter stale bot logic.
+- Does not expose secrets in output.
+
+---
+
+## 5. Meddash Pipeline Internals
+
+Meddash runner:
+
+`/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/07_DevOps_Observability/meddash_pipeline_runner.py`
+
+Environment injected by runner:
+
+- `MEDDASH_ROOT=/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend`
+- `PYTHONPATH=/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/07_DevOps_Observability`
+- `DISABLE_INTERNAL_TELEGRAM=1`
+
+### 5.1 Engine 01 — KOL Data Engine
+
+Path:
+
+`/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/01_KOL_Data_Engine/`
+
+n8n call:
+
+`POST /meddash/engine01`
+
+Runner command:
+
+`python3 nightly_scheduler.py --max-targets 5 --max-results 5 --skip-disambiguation --skip-weights --skip-centrality --json-summary`
+
+This is the scheduled freshness lane. Full/deep KOL rebuilds remain manual/supervised because they can process hundreds of BioCrawler targets, PubMed pulls, disambiguation, weights, and centrality.
+
+Key scripts:
+
+| Script | Role |
+|---|---|
+| `nightly_scheduler.py` | Master KOL scheduler/orchestrator; now supports bounded scheduled args `--max-targets`, `--skip-disambiguation`, and `--skip-weights`. |
+| `run_pipeline.py` | Core KOL pipeline runner; supports skipping full-DB disambiguation/weights for scheduled lane. |
+| `extract_publications.py` | NCBI/PubMed/ORCID extraction with process-wide PubMed socket timeout via `MEDDASH_PUBMED_TIMEOUT` default `20s`. |
+| `db_ingestion.py` | ORCID-first upsert to local KOL DB. |
+| `kol_disambiguator.py` | Coauthor/MeSH/name/temporal KOL disambiguation. |
+| `kol_weight.py` | Publication/journal weighting. |
+| `review_disambiguations.py` | Gemini review for ambiguous identities. |
+| `load_sjr.py` | SCImago/SJR journal metric loading. |
+| `mesh_rotation.py` | Disease/category rotation. |
+
+Outputs:
+
+- Local SQLite: `meddash_kols.db`
+- Summary JSON: `kol_pipeline_summary.json`
+- Downstream: dashboard/product briefs/Supabase migration paths.
+
+### 5.2 Engine 02 — Clinical Trials Data Engine
+
+Path:
+
+`/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/02_CT_Data_Engine/`
+
+n8n call:
+
+`POST /meddash/engine02`
+
+Runner command:
+
+`python3 ct_crawler.py --mode delta --hours 24`
+
+Key scripts:
+
+| Script | Role |
+|---|---|
+| `ct_crawler.py` | ClinicalTrials.gov v2 crawl; writes `ct_crawler_summary.json`, which is the canonical CT summary file consumed by Ops API health. |
+| `ct_ingestion.py` | JSON/raw trials to normalized SQLite tables. |
+| `ct_mesh_mapper.py` | Condition → MeSH mapping. |
+| `ct_kol_bridge.py` | Investigator ↔ KOL bridge. |
+| `ct_results_parser.py` | Outcomes/adverse events parser. |
+| `ct_pub_bridge.py` | Trial ↔ publication bridge. |
+| `ct_eligibility_parser.py` | Eligibility/biomarker/stage parser. |
+| `ct_initializer.py` | Initial DB/setup tasks. |
+
+Important operational note:
+
+- Current scheduled runner executes the crawler step only (`ct_crawler.py --mode delta --hours 24`).
+- Full CT freshness may require explicit ingestion and MeSH mapping depending on current script behavior/output path.
+- This must remain visible in architecture because raw crawl without ingestion can leave `ct_trials.db` stale.
+
+Outputs:
+
+- Local SQLite: `ct_trials.db`
+- Summary JSON: `ct_crawler_summary.json`
+- Trial tables feed KOL briefs, TA landscapes, dashboard, and clinical-event context.
+
+### 5.3 Engine 03 — BioCrawler GTM
+
+Path:
+
+`/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/03_BioCrawler_GTM/`
+
+n8n call:
+
+`POST /meddash/engine03`
+
+Runner command:
+
+`python3 biocrawler.py --mode test`
+
+Why bounded mode:
+
+- `--mode all` can exceed n8n/Ops API windows because deep enrichment includes slow external checks and sleeps.
+- The workflow-safe daily path is `--mode test`.
+- Full deep crawling should be manual/supervised, not inside daily n8n chain.
+
+Key scripts:
+
+| Script | Role |
+|---|---|
+| `biocrawler.py` | Company intelligence crawler. |
+| `bridge_engine.py` | SVS/advisory-board mapping. |
+| `export_all_leads_to_sheets.py` | Export all leads to Google Sheets. |
+| `pull_from_sheets.py` | CRM/contact reverse sync from Google Sheets. |
+| `manual_url_ingest.py` | Manual company URL ingestion. |
+| `push_to_sheets.py.DISABLED` | Old top-20 export, retired. |
+
+Outputs:
+
+- Local SQLite: `biocrawler_leads.db`
+- Supabase: `biotech_leads` through sync/export paths
+- Google Sheet: `Biocrawler Biotech List`
+- Product use: Meddash outreach/GTM, company context, reverse matching to ticker spine.
+
+---
+
+## 6. Clinical Quant Pipeline Internals
+
+CQ runner:
+
+`/mnt/c/Users/email/.gemini/antigravity/CTO/CQ_Team/scripts/cq_pipeline_runner.py`
+
+Commands:
+
+| Command | Meaning |
+|---|---|
+| `ticker_spine` | Run canonical ticker registry refresh. |
+| `yahoo_ticker_news` | Pull Yahoo Finance RSS link metadata. |
+| `detect` | Run ticker spine + Yahoo news + SEC/FDA/PR detectors. |
+| `select_file` | Find latest CQ daily update markdown. |
+
+### 6.1 CQ Ticker Spine
+
+Scripts:
+
+- `scripts/market_data/apply_ticker_spine_schema.py`
+- `scripts/market_data/create_ticker_spine_schema.sql`
+- `scripts/market_data/build_biotech_ticker_registry.py`
+
+Data sources:
+
+- Alpha Vantage listing status
+- SEC company tickers/CIK map
+- Existing BioCrawler local/Supabase company names for exact reverse matching
+
+Tables written:
+
+- `biotech_tickers`
+- `biotech_ticker_aliases`
+- `biocrawler_ticker_matches`
+
+Current verified counts:
+
+| Table | Count |
+|---|---:|
+| `biotech_tickers` | 13,257 |
+| `biotech_ticker_aliases` | 13,257 |
+| `biocrawler_ticker_matches` | 194 |
+
+Match policy:
+
+1. Exact ticker + exchange.
+2. Exact CIK.
+3. Exact normalized company/legal name.
+4. Reviewed high-confidence alias.
+5. Fuzzy match only as a suggestion/candidate; never production auto-write.
+
+Current result:
+
+- 126 exact BioCrawler/company-name matches.
+- 68 existing BioCrawler ticker candidates.
+- Zero fuzzy auto-writes.
+
+### 6.2 Yahoo Finance RSS Link Collector
+
+Script:
+
+`/mnt/c/Users/email/.gemini/antigravity/CTO/CQ_Team/scripts/market_data/pull_yahoo_ticker_news.py`
+
+n8n/Ops path:
+
+- Runs inside `/cq/detect`.
+- Can also be run by `cq_pipeline_runner.py yahoo_ticker_news`.
+
+Input:
+
+- Verified ticker spine exact matches first.
+
+External source:
+
+`https://feeds.finance.yahoo.com/rss/2.0/headline?s={TICKER}&amp;region=US&amp;lang=en-US`
+
+Output policy:
+
+- Store metadata and links only.
+- Do not hoard full article text unless product reason exists.
+- CQ-Selector reads selected links and summarizes later.
+
+Tables written:
+
+| Table | Count |
+|---|---:|
+| `cq_market_sentiment` | 111 |
+| `cq_market_events` | 111 |
+
+### 6.3 SEC 8-K Monitor
+
+Script:
+
+`/mnt/c/Users/email/.gemini/antigravity/CTO/CQ_Team/scripts/phase1_regulatory/sec_8k_monitor.py`
+
+Current source policy:
+
+- Reads verified ticker-spine targets.
+- Does not rely on fuzzy `biotech_leads.ticker` guesses.
+
+External source:
+
+- SEC EDGAR/RSS/company filing signals.
+
+Purpose:
+
+- Detect material regulatory/company catalyst filings.
+- Feed CQ catalyst intelligence and newsletter selection.
+
+### 6.4 FDA PDUFA Tracker
+
+Script:
+
+`/mnt/c/Users/email/.gemini/antigravity/CTO/CQ_Team/scripts/phase1_regulatory/fda_pdufa_tracker.py`
+
+Current source policy:
+
+- Reads ticker-spine aliases/company-name map.
+- Avoids fuzzy BioCrawler ticker writes.
+
+External source:
+
+- FDA calendars/advisory/PDUFA sources.
+
+Purpose:
+
+- Detect upcoming FDA dates or regulatory catalyst changes.
+
+### 6.5 PR Wire Aggregator
+
+Script:
+
+`/mnt/c/Users/email/.gemini/antigravity/CTO/CQ_Team/scripts/phase1_regulatory/pr_wire_aggregator.py`
+
+Current source policy:
+
+- Reads exact reverse matches from `biocrawler_ticker_matches`.
+- Uses verified ticker spine exact matches for company/news matching.
+
+External sources currently retained:
+
+- PRNewswire health latest RSS.
+- GlobeNewswire Pharmaceuticals RSS.
+
+Previously fixed failure:
+
+- Removed bad BusinessWire HTML/non-RSS industry endpoint.
+- Replaced unbounded `feedparser.parse(url)` with `requests.get(..., timeout=15)` then parse content.
+
+Purpose:
+
+- Detect Phase 1/clinical readout PR events.
+
+### 6.6 Market Data Prototypes / Future Price Bars
+
+Scripts:
+
+| Script | Status |
+|---|---|
+| `phase3_sentiment/alpha_vantage_tracker.py` | Prototype; credentials present; not core production write path now because ticker-spine handles listing status and Yahoo handles link metadata. |
+| `phase4_quant/massive_tracker.py` | Prototype/reserved; target table `cq_price_bars` exists but count is 0. |
+
+Table reserved:
+
+- `cq_price_bars`
+
+Rule:
+
+- Do not mature Massive/price ingestion until it is bounded, ticker_id-linked, and does not slow the daily CQ workflow.
+
+---
+
+## 7. Current Data Stores and Counts
+
+### 7.1 Local SQLite Databases
+
+| DB | Path | Tables / current counts |
+|---|---|---|
+| BioCrawler | `06_Shared_Datastores/biocrawler_leads.db` | `biotech_leads`: 658; `associated_kols`: 448; `biotech_associated_kols`: 448; `crm_contacts`: 0 |
+| CT Trials | `06_Shared_Datastores/ct_trials.db` | `trials`: 1005; `trial_conditions`: 2268; `trial_interventions`: 1938; `trial_sponsors`: 1628; `trial_sites`: 15555; `trial_investigators`: 831; `trial_outcomes`: 7391; `trial_results`: 462; `trial_publications`: 1231; `trial_eligibility`: 1004; `condition_mesh_map`: 15 |
+| KOLs | `06_Shared_Datastores/meddash_kols.db` | `kols`: 8298; `mesh_ontology`: 2542; `publications`: 877; `kol_authorships`: 7977; `publication_mesh_map`: 9779; `journal_metrics`: 31125; `kol_merge_candidates`: 230 |
+
+### 7.2 Summary / State Files
+
+Folder:
+
+`/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/06_Shared_Datastores/pipeline_summaries/`
+
+Expected summary files:
+
+- `kol_pipeline_summary.json`
+- `ct_crawler_summary.json`
+- `biocrawler_summary.json`
+
+State/log folder:
+
+`/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/06_Shared_Datastores/pipeline_state/`
+
+Expected run logs:
+
+- `pipeline_run_YYYY-MM-DD_HHMMSS.json`
+- MeSH rotation state JSONs where used.
+
+### 7.3 Supabase Tables
+
+Connected from CQ `.env` through `SUPABASE_URI` / REST credentials. Values are not recorded.
+
+Current verified counts:
+
+| Table | Count | Role |
+|---|---:|---|
+| `biotech_leads` | 640 | Supabase company/lead table synced from BioCrawler path. |
+| `cq_regulatory_catalysts` | 0 | CQ regulatory catalyst target table; currently no rows. |
+| `biotech_tickers` | 13,257 | Canonical ticker/security registry. |
+| `biotech_ticker_aliases` | 13,257 | Alias/name table tied to ticker IDs. |
+| `biocrawler_ticker_matches` | 194 | Reverse BioCrawler ↔ ticker spine matches/candidates. |
+| `cq_market_sentiment` | 111 | Link-level market/news metadata from Yahoo RSS. |
+| `cq_price_bars` | 0 | Future Massive/price-bar ingestion target. |
+| `cq_market_events` | 111 | Link-level event table for CQ Selector. |
+
+### 7.4 Ticker-Spine Relationship Map
+
+```mermaid
+erDiagram
+    biotech_tickers ||--o{ biotech_ticker_aliases : has
+    biotech_tickers ||--o{ biocrawler_ticker_matches : reverse_matches
+    biotech_tickers ||--o{ cq_market_sentiment : annotates
+    biotech_tickers ||--o{ cq_market_events : anchors
+    biotech_tickers ||--o{ cq_price_bars : prices
+    biotech_leads ||--o{ biocrawler_ticker_matches : candidate_company
+
+    biotech_tickers {
+        uuid id
+        text ticker
+        text exchange
+        text company_name
+        text company_name_normalized
+        text cik
+        bool is_biotech
+        bool is_active_listing
+        text source
+    }
+
+    biotech_ticker_aliases {
+        uuid id
+        uuid ticker_id
+        text alias
+        text alias_normalized
+        text alias_type
+        text source
+    }
+
+    biocrawler_ticker_matches {
+        uuid id
+        uuid ticker_id
+        text ticker
+        text biocrawler_company_name
+        text ticker_company_name
+        text match_method
+        text review_status
+    }
+
+    cq_market_sentiment {
+        uuid id
+        uuid ticker_id
+        text ticker
+        text source
+        text headline
+        text url
+        timestamptz published_at
+    }
+
+    cq_market_events {
+        uuid id
+        uuid ticker_id
+        text ticker
+        text event_type
+        text event_title
+        text event_url
+        text source
+    }
+
+    cq_price_bars {
+        uuid id
+        uuid ticker_id
+        text ticker
+        timestamptz bar_time
+        numeric open
+        numeric high
+        numeric low
+        numeric close
+        numeric volume
+    }
+```
+
+---
+
+## 8. Paperclip Agent Architecture
+
+Paperclip endpoint:
+
+`http://127.0.0.1:3100`
+
+Company ID:
+
+`cf39ae28-5bd5-44d1-b888-b01f83192fd5`
+
+Current live agent roster from API: 12 agents.
+
+| Agent | ID | Role | Reports To | Provider | Model | Heartbeat |
+|---|---|---|---|---|---|---|
+| CQ-COO | `d69fface-4475-4166-aa9d-f26acbcd12d2` | CEO/COO | none | ollama-cloud | glm-5.1 | 7200s |
+| CQ-CTO | `1ad999cb-a7f2-4464-8d3a-701e04951ff6` | CTO | CQ-COO | ollama-cloud | glm-5.1 | 14400s |
+| CQ-Selector(CQ.FNL) | `31049770-807e-4e82-9a87-15ccdb43845f` | PM/editor | CQ-COO | ollama-cloud | glm-5 | 3600s |
+| CQ-Researcher(CQ.FNL) | `26105f52-560b-4ac3-afb7-4df51f0de0fb` | Researcher | CQ-Selector | ollama-cloud | kimi-k2.5 | 7200s |
+| CQ-Monitor(CQ-FNL) | `bb9deb04-97d7-4f35-89bc-130f67d8f759` | QA | CQ-CTO | ollama-cloud | ministral-3:3b | 7200s |
+| Meddash-COO | `ca4c3f1a-dd15-43c4-8ae2-498b3a839273` | CEO/COO | none | ollama-cloud | glm-5 | 300s legacy config |
+| Meddash-CTO | `9511e1ea-def0-4c0b-a78b-7d9f63cae6a2` | CTO | Meddash-COO | ollama-cloud | glm-5.1 | 3600s/legacy mixed config |
+| Meddash-Monitor | `2f72ef2a-f8da-41ba-a41c-b1a20080ba55` | QA | Meddash-CTO | ollama-cloud | deepseek-v4-flash | 7200s |
+| Meddash-CQ-Dashboard-Monitor | `b04b8342-527c-4ceb-abee-bf44dade4fe7` | DevOps | Meddash-CTO | ollama-cloud | ministral-3:3b | 1800s |
+| Meddash-CMO | `45d700f5-3451-48a6-b6e6-a0e211040a60` | CMO | Meddash-COO | ollama-cloud | glm-4.7 | 14400s |
+| Meddash-CQ File Index Agent | `26dd7a48-4682-437a-8491-89a1bbb2332f` | Librarian | Meddash-COO | ollama-cloud | qwen2.5:7b | 14400s |
+| Meddash-Eye(Researcher/Analyst) | `ef38de08-972a-4b7d-9ff7-c00bdba02950` | Researcher | Meddash-COO | ollama-cloud | glm-5 | 7200s |
+
+### 8.1 Paperclip Org Mermaid
+
+```mermaid
+flowchart TB
+    CQCOO[&quot;CQ-COO
+glm-5.1&quot;]
+    CQCTO[&quot;CQ-CTO
+glm-5.1&quot;]
+    Selector[&quot;CQ-Selector
+glm-5&quot;]
+    Researcher[&quot;CQ-Researcher
+kimi-k2.5&quot;]
+    CQMonitor[&quot;CQ-Monitor
+ministral-3:3b&quot;]
+
+    MCOO[&quot;Meddash-COO
+glm-5&quot;]
+    MCTO[&quot;Meddash-CTO
+glm-5.1&quot;]
+    MMonitor[&quot;Meddash-Monitor
+deepseek-v4-flash&quot;]
+    Dash[&quot;Dashboard-Monitor
+ministral-3:3b&quot;]
+    CMO[&quot;Meddash-CMO
+glm-4.7&quot;]
+    Eye[&quot;Meddash-Eye
+glm-5&quot;]
+    Librarian[&quot;File Index Agent
+qwen2.5:7b&quot;]
+
+    CQCOO --&gt; CQCTO
+    CQCOO --&gt; Selector
+    CQCTO --&gt; CQMonitor
+    Selector --&gt; Researcher
+
+    MCOO --&gt; MCTO
+    MCOO --&gt; CMO
+    MCOO --&gt; Eye
+    MCOO --&gt; Librarian
+    MCTO --&gt; MMonitor
+    MCTO --&gt; Dash
+```
+
+### 8.2 Paperclip Trigger Rules
+
+Correct n8n-to-Paperclip sequence:
+
+```mermaid
+sequenceDiagram
+    participant n8n
+    participant Paperclip
+    participant Selector as CQ-Selector
+    participant Monitor as CQ-Monitor
+
+    n8n-&gt;&gt;Paperclip: POST /api/companies/{companyId}/issues assigneeAgentId=SelectorUUID
+    Paperclip--&gt;&gt;n8n: Issue JSON
+    n8n-&gt;&gt;Paperclip: POST /api/agents/{SelectorUUID}/wakeup
+    Paperclip--&gt;&gt;Selector: Wake on assigned issue
+    Selector-&gt;&gt;Paperclip: Process issue / may create child research issues
+    Selector-&gt;&gt;Paperclip: Assign child issues to CQ-Researcher
+    n8n-&gt;&gt;Paperclip: POST /api/companies/{companyId}/issues assigneeAgentId=MonitorUUID
+    Paperclip--&gt;&gt;n8n: Monitor issue JSON
+    n8n-&gt;&gt;Paperclip: POST /api/agents/{MonitorUUID}/wakeup
+    Paperclip--&gt;&gt;Monitor: Wake on assigned issue
+```
+
+Never use:
+
+- `assignee` short field.
+- Display names as assignees.
+- Short IDs like `31049770`.
+- Issue creation without wakeup if deterministic execution is expected.
+
+This was corrected in the live CQ n8n workflow during architecture capture.
+
+---
+
+## 9. Telegram Architecture
+
+Telegram is used in three ways:
+
+1. Ops API sends centralized health/cq/report messages.
+2. n8n CQ workflow has two direct Telegram send nodes:
+   - `CQ Engine Started`
+   - `CQ Selector Triggered`
+3. n8n Command Listener polls Telegram commands through Ops API instead of Telegram Trigger.
+
+Why no Telegram Trigger:
+
+- Telegram webhooks require public HTTPS.
+- This system runs on localhost/WSL.
+- Therefore Telegram Trigger causes `bad webhook: HTTPS URL required`.
+
+Canonical pattern:
+
+```mermaid
+flowchart LR
+    T[&quot;Telegram Bot&quot;] --&gt;|getUpdates polling| Ops[&quot;Ops API /telegram/poll&quot;]
+    Ops --&gt; Poller[&quot;meddash_command_poll_once.py&quot;]
+    Poller --&gt;|sendMessage| T
+    n8n[&quot;n8n Schedule every 10s&quot;] --&gt; Ops
+    Ops --&gt; Dr[&quot;Dr. Don chat&quot;]
+```
+
+---
+
+## 10. Obsidian / Hermes / SWIP Memory Layer
+
+Canonical vault:
+
+`/mnt/c/Users/email/Hermes Agent Win Files/`
+
+Must-read files for deep project work:
+
+- `SCHEMA.md`
+- `index.md`
+
+Core architecture pages:
+
+| Page | Role |
+|---|---|
+| `concepts/cq-triarchy-architecture.md` | n8n/Paperclip/Alfred/Vault operating model. |
+| `concepts/cq-quariarchy-architecture.md` | Adds Agent Zero CQ as fourth pillar. |
+| `concepts/meddash-data-spine.md` | Older data-spine reference; now superseded for ticker direction by this architecture. |
+| `reference/meddash-backend-map.md` | Backend scripts, engines, DB map. |
+| `projects/clinical-quant/newsletter-pipeline-design.md` | CQ newsletter design history. |
+| `projects/clinical-quant/newsletter/` | CQ daily brief drafts. |
+| `projects/clinical-quant/posted-events-log.md` | Dedup log for published catalyst/news items. |
+
+Operational index:
+
+`/mnt/c/Users/email/.gemini/antigravity/Meddash Phase 3 Automation Observation and Sales/MDP3-SWIP4.md`
+
+This architecture file is the current consolidated map; SWIP4 remains the step-by-step implementation ledger.
+
+---
+
+## 11. Agent Zero CQ / A2A Pillar
+
+Reference architecture says Agent Zero CQ is the fourth pillar for conversational ideation/research/planning.
+
+Known paths/endpoints:
+
+| Item | Value |
+|---|---|
+| Container/workspace name | `agent-cq` |
+| UI endpoint | `http://127.0.0.1:5081/` |
+| A2A endpoint | `http://127.0.0.1:5081/a2a/` |
+| Workspace path | `/mnt/c/Users/email/agent-zero/agent-CQ` |
+
+Current constraint from vault:
+
+- A0-CQ has stale/non-functional model endpoints in multi-LLM config.
+- Until cleaned and verified, treat A2A as reference/future pillar, not part of deterministic daily Meddash/CQ production chain.
+
+---
+
+## 12. External Data Sources
+
+| Source | Used By | Current role |
+|---|---|---|
+| PubMed / NCBI E-utilities | KOL engine | Publications and biomedical expert signal. |
+| ORCID | KOL engine | Identity/disambiguation support. |
+| SCImago / journal metrics | KOL engine | Publication weight and impact. |
+| ClinicalTrials.gov API v2 | CT engine | Trial records and updates. |
+| SEC EDGAR / SEC ticker map | CQ ticker spine + SEC monitor | CIK mapping, listed company identity, SEC event detection; SEC monitor now uses bounded per-request timeout and daily scan cap. |
+| FDA calendars/pages | FDA tracker | PDUFA/advisory/regulatory dates. |
+| PRNewswire RSS | PR aggregator | PR catalyst discovery. |
+| GlobeNewswire RSS | PR aggregator | PR catalyst discovery. |
+| Yahoo Finance RSS | CQ market news | Link-level ticker news metadata. |
+| Alpha Vantage listing status | CQ ticker spine | Listed-security registry source. |
+| Massive | Future CQ price bars | Prototype only; `cq_price_bars` ready but unpopulated. |
+| Google Sheets | BioCrawler CRM/GTM | Lead export/reverse sync. |
+| Telegram Bot API | Ops API + n8n | Alerts, health, command polling. |
+| Supabase Postgres/REST | Meddash/CQ shared cloud DB | Shared production-ish data spine. |
+
+---
+
+## 13. Disabled / Deprecated / Guarded Paths
+
+| Path / pattern | Status | Reason |
+|---|---|---|
+| `CTO/CQ_Team/scripts/enrich_tickers.py` | Guard stub only | Old fuzzy ticker enrichment disabled. |
+| `CTO/CQ_Team/scripts/enrich_tickers.py.DISABLED_FUZZY_DO_NOT_RUN` | Archived original | Previously attempted BioCrawler company-name → ticker fuzzy writes. Do not run. |
+| BioCrawler company name → ticker fuzzy auto-write | Forbidden | Produced wrong ticker mappings and non-listed company confusion. |
+| Direct `feedparser.parse(url)` remote fetch | Forbidden in production CQ | Can hang; use bounded `requests.get(..., timeout=15)` first. SEC and PR lanes must also use explicit request timeouts and bounded scan caps. |
+| BusinessWire HTML industry page as RSS | Disabled | Was not a reliable RSS endpoint and caused PR Wire timeout. |
+| n8n Telegram Trigger on localhost | Forbidden | Telegram requires HTTPS webhook. |
+| n8n Code nodes with `require()` | Avoid | Sandbox blocks modules. |
+| n8n Execute Command nodes | Avoid in current install | Disabled/unrecognized in n8n 2.x environment. |
+| Scattered internal script Telegram sends | Avoid | Centralize in Ops API; set `DISABLE_INTERNAL_TELEGRAM=1`. |
+| `push_to_sheets.py` old top-20 flow | Disabled/retired | Replaced by all-leads export/import workflow. |
+
+---
+
+## 14. Current End-to-End Sequence — Meddash Daily
+
+```mermaid
+sequenceDiagram
+    participant Clock as n8n Schedule 06:00 UTC
+    participant Ops as Ops API :8765
+    participant Runner as meddash_pipeline_runner.py
+    participant KOL as KOL Engine
+    participant CT as CT Engine
+    participant BIO as BioCrawler
+    participant DB as Local SQLite/Summary JSON
+    participant TG as Telegram
+
+    Clock-&gt;&gt;Ops: POST /meddash/engine01
+    Ops-&gt;&gt;Runner: python3 meddash_pipeline_runner.py engine01
+    Runner-&gt;&gt;KOL: bounded nightly_scheduler.py --max-targets 5 --max-results 5 --skip-disambiguation --skip-weights --skip-centrality
+    KOL-&gt;&gt;DB: update meddash_kols.db + kol_pipeline_summary.json
+
+    Clock-&gt;&gt;Ops: POST /meddash/engine02
+    Ops-&gt;&gt;Runner: python3 meddash_pipeline_runner.py engine02
+    Runner-&gt;&gt;CT: python3 ct_crawler.py --mode delta --hours 24
+    CT-&gt;&gt;DB: update CT raw + ct_crawler_summary.json; health reads this exact filename
+
+    Clock-&gt;&gt;Ops: POST /meddash/engine03
+    Ops-&gt;&gt;Runner: python3 meddash_pipeline_runner.py engine03
+    Runner-&gt;&gt;BIO: python3 biocrawler.py --mode test
+    BIO-&gt;&gt;DB: update biocrawler_leads.db + summary
+
+    Clock-&gt;&gt;Ops: POST /meddash/health
+    Ops-&gt;&gt;DB: read summaries + DB counts
+    Ops-&gt;&gt;TG: send health report
+```
+
+---
+
+## 15. Current End-to-End Sequence — CQ Daily
+
+```mermaid
+sequenceDiagram
+    participant Clock as n8n Schedule 11:00 UTC
+    participant Ops as Ops API :8765
+    participant CQ as cq_pipeline_runner.py
+    participant SDB as Supabase
+    participant PC as Paperclip API :3100
+    participant Sel as CQ-Selector
+    participant Res as CQ-Researcher
+    participant Mon as CQ-Monitor
+    participant Vault as Obsidian/Hermes Vault
+    participant TG as Telegram
+
+    Clock-&gt;&gt;Ops: POST /cq/ticker-spine
+    Ops-&gt;&gt;CQ: python3 cq_pipeline_runner.py ticker_spine
+    CQ-&gt;&gt;SDB: upsert biotech_tickers, aliases, biocrawler_ticker_matches
+    Ops-&gt;&gt;TG: ticker spine finished
+
+    Clock-&gt;&gt;Ops: POST /cq/detect
+    Ops-&gt;&gt;CQ: python3 cq_pipeline_runner.py detect
+    CQ-&gt;&gt;SDB: refresh ticker spine
+    CQ-&gt;&gt;SDB: write Yahoo RSS links to cq_market_sentiment/cq_market_events
+    CQ-&gt;&gt;SDB: run SEC/FDA/PR detection against verified ticker spine
+    Ops-&gt;&gt;TG: detection finished
+
+    Clock-&gt;&gt;PC: POST /companies/{company}/issues assigneeAgentId=Selector
+    PC--&gt;&gt;Clock: issue JSON
+    Clock-&gt;&gt;PC: POST /agents/{Selector}/wakeup
+    PC--&gt;&gt;Sel: assigned issue wake
+    Sel-&gt;&gt;SDB: read catalysts/events/tickers
+    Sel-&gt;&gt;Vault: read posted-events log and write draft/research notes
+    Sel-&gt;&gt;PC: create child issues for Researcher if needed
+    Sel-&gt;&gt;Res: assign deep verification child issues
+
+    Clock-&gt;&gt;PC: POST /companies/{company}/issues assigneeAgentId=Monitor
+    PC--&gt;&gt;Clock: monitor issue JSON
+    Clock-&gt;&gt;PC: POST /agents/{Monitor}/wakeup
+    PC--&gt;&gt;Mon: QA wake
+    Mon-&gt;&gt;SDB: verify current data counts/signals
+    Mon-&gt;&gt;Vault: write logs/audit notes
+
+    Clock-&gt;&gt;Ops: POST /cq/latest-report
+    Ops-&gt;&gt;Vault: read latest CQ report path if present
+    Ops-&gt;&gt;TG: send latest CQ update preview
+```
+
+---
+
+## 16. Product Output Layer
+
+### 16.1 Meddash Product Outputs
+
+| Product | Source dependencies | Output |
+|---|---|---|
+| KOL Brief | KOL DB + CT DB + BioCrawler/company context | `$2,450` style KOL intelligence brief. |
+| TA Landscape | CT DB + KOL DB + ontology mapping | Therapeutic-area report. |
+| GTM Lead Sheet | BioCrawler DB + Google Sheets | Outreach/CRM target list. |
+| Dashboard | Local SQLite + Supabase | Streamlit factory-floor dashboard, port 5090. |
+
+### 16.2 Clinical Quant Outputs
+
+| Product | Source dependencies | Output |
+|---|---|---|
+| CQ Daily Brief | ticker spine + SEC/FDA/PR/Yahoo + Paperclip selection/research | Daily catalyst/newsletter draft. |
+| CQ Market Events | Yahoo RSS + verified ticker IDs | Link/event intelligence for Selector. |
+| CQ Research Notes | Paperclip Researcher + vault | Deep catalyst verification notes. |
+| CQ Telegram Update | Ops API latest report sender | Preview to Dr. Don. |
+
+Manual publishing remains human-controlled:
+
+- Dr. Don reviews drafts.
+- Dr. Don copies to Substack/LinkedIn.
+- No automated LinkedIn spam/browser automation.
+
+---
+
+## 17. Guardrails / What Not To Do
+
+1. Do not auto-write fuzzy ticker matches.
+2. Do not run SEC/news/price pulls from unverified BioCrawler ticker guesses.
+3. Do not use BioCrawler company name as market-security source of truth.
+4. Do not scrape Yahoo Finance web pages directly if RSS works.
+5. Do not store full article text unless product reason exists.
+6. Do not reintroduce BusinessWire HTML page as PR RSS.
+7. Do not let n8n execute shell scripts directly in this install.
+8. Do not use n8n Telegram Trigger on localhost.
+9. Do not write n8n credentials directly into SQLite.
+10. Do not patch Supabase destructively without explicit confirmation.
+11. Do not use Paperclip `assignee` or short agent IDs.
+12. Do not create Paperclip issue without wakeup when deterministic action is required.
+13. Do not rely on DB `active=1` alone to start n8n triggers; use UI toggle after workflow DB edits.
+14. Do not restart/kill broad n8n processes without user approval if previously denied.
+15. Do not print or preserve secrets in docs.
+
+---
+
+## 18. Current Known Gaps / Watch Items
+
+| Gap | Severity | Explanation | Next action |
+|---|---|---|---|
+| n8n active flags are 0 | High operational | Workflows exist and are patched, but schedules will not fire until activated/toggled in UI. | Open n8n UI, hard refresh, toggle intended workflows active. |
+| CT health filename mismatch | Fixed | Ops API previously looked for non-existent `ct_delta_summary.json`. | Corrected to read `ct_crawler_summary.json` under logical `ct_delta` key. |
+| `cq_price_bars` empty | Low/currently acceptable | Massive/price ingestion not yet productionized. | Add bounded Massive stage later if product needs price context. |
+| `cq_regulatory_catalysts` empty | Medium | Detectors pass but latest check found no catalyst rows. | Monitor after real market day / expand detectors if needed. |
+| A0-CQ model endpoints stale | Low for daily pipeline | Agent Zero CQ is not in deterministic n8n chain. | Clean model config before using A2A in production. |
+| Internal per-engine Telegram 404 noise | Low/cleanup | KOL/CT internals can still emit stale Telegram HTTP 404 despite centralized Ops API Telegram working. | Keep `DISABLE_INTERNAL_TELEGRAM=1`; remove/clean internal notifier calls later. |
+
+---
+
+## 19. File/Path Index
+
+### Meddash Phase 3 folder
+
+`/mnt/c/Users/email/.gemini/antigravity/Meddash Phase 3 Automation Observation and Sales/`
+
+Key files:
+
+- `MDP3-SWIP4.md`
+- `mdp3.architecture.20260429-0215.md` ← this file
+
+### Meddash backend
+
+`/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/`
+
+Important subfolders:
+
+- `01_KOL_Data_Engine/`
+- `02_CT_Data_Engine/`
+- `03_BioCrawler_GTM/`
+- `04_Product_KOL_Briefs/`
+- `05_Product_TA_Landscape/`
+- `06_Shared_Datastores/`
+- `07_DevOps_Observability/`
+- `08_MDM_Ontology_Engine/`
+- `09_Scholar_Engine/`
+- `10_KOL_Centrality_Engine/`
+
+### CQ team scripts
+
+`/mnt/c/Users/email/.gemini/antigravity/CTO/CQ_Team/scripts/`
+
+Important subfolders/scripts:
+
+- `cq_pipeline_runner.py`
+- `market_data/build_biotech_ticker_registry.py`
+- `market_data/pull_yahoo_ticker_news.py`
+- `market_data/apply_ticker_spine_schema.py`
+- `market_data/create_ticker_spine_schema.sql`
+- `phase1_regulatory/sec_8k_monitor.py`
+- `phase1_regulatory/fda_pdufa_tracker.py`
+- `phase1_regulatory/pr_wire_aggregator.py`
+- `phase3_sentiment/alpha_vantage_tracker.py`
+- `phase4_quant/massive_tracker.py`
+- `enrich_tickers.py` guard stub
+- `enrich_tickers.py.DISABLED_FUZZY_DO_NOT_RUN` archived old fuzzy logic
+
+### Hermes vault
+
+`/mnt/c/Users/email/Hermes Agent Win Files/`
+
+Important architecture refs:
+
+- `SCHEMA.md`
+- `index.md`
+- `concepts/cq-triarchy-architecture.md`
+- `concepts/cq-quariarchy-architecture.md`
+- `concepts/meddash-data-spine.md`
+- `reference/meddash-backend-map.md`
+- `projects/clinical-quant/newsletter-pipeline-design.md`
+
+### Paperclip instruction/log roots
+
+- `~/.paperclip/instances/default/companies/cf39ae28-5bd5-44d1-b888-b01f83192fd5/agents/`
+- `/mnt/c/Users/email/Hermes Agent Win Files/Meddash-Paper Clip Agent Logs/`
+- `/mnt/c/Users/email/Hermes Agent Win Files/CQ-Paper Clip Agent Logs/`
+
+---
+
+## 20. Mermaid Map — Current Trigger Surface
+
+```mermaid
+flowchart TD
+    subgraph Triggers[&quot;Trigger Surface&quot;]
+        T1[&quot;n8n Meddash Schedule
+06:00 UTC&quot;]
+        T2[&quot;n8n CQ Schedule
+11:00 UTC&quot;]
+        T3[&quot;n8n Telegram Poll
+every 10 sec&quot;]
+        T4[&quot;Alfred manual CLI sessions&quot;]
+        T5[&quot;Paperclip heartbeats&quot;]
+    end
+
+    subgraph Ops[&quot;Execution/Agent Layer&quot;]
+        API[&quot;Meddash Ops API :8765&quot;]
+        PC[&quot;Paperclip :3100&quot;]
+        Hermes[&quot;Hermes/Alfred&quot;]
+    end
+
+    subgraph Data[&quot;Data Stores&quot;]
+        LDB[&quot;Local SQLite DBs&quot;]
+        SDB[&quot;Supabase&quot;]
+        Vault[&quot;Obsidian/Hermes Vault&quot;]
+        Sheets[&quot;Google Sheets&quot;]
+    end
+
+    T1 --&gt; API
+    T2 --&gt; API
+    T3 --&gt; API
+    T4 --&gt; API
+    T4 --&gt; PC
+    T4 --&gt; Data
+    T5 --&gt; PC
+
+    API --&gt; LDB
+    API --&gt; SDB
+    API --&gt; PC
+    API --&gt; Vault
+    API --&gt; Sheets
+    PC --&gt; Vault
+    Hermes --&gt; Vault
+    Hermes --&gt; SDB
+    Hermes --&gt; LDB
+```
+
+---
+
+## 21. Final Canonical Data Direction
+
+```mermaid
+flowchart LR
+    Market[&quot;Market/security sources
+Alpha Vantage listing + SEC ticker/CIK&quot;] --&gt; Tickers[&quot;biotech_tickers
+canonical ticker IDs&quot;]
+    Tickers --&gt; Aliases[&quot;biotech_ticker_aliases&quot;]
+    Tickers --&gt; Matches[&quot;biocrawler_ticker_matches
+reverse matching&quot;]
+    Bio[&quot;BioCrawler companies
+local + Supabase biotech_leads&quot;] --&gt; Matches
+    Tickers --&gt; News[&quot;Yahoo RSS / PR / SEC / FDA
+verified ticker scans&quot;]
+    News --&gt; Events[&quot;cq_market_events
+cq_market_sentiment
+cq_regulatory_catalysts&quot;]
+    Events --&gt; Selector[&quot;CQ-Selector
+selection + newsletter reasoning&quot;]
+    Selector --&gt; Draft[&quot;CQ daily brief / Telegram / Obsidian&quot;]
+
+    Bad[&quot;BioCrawler company name
+→ fuzzy ticker guess&quot;] -. forbidden .-&gt; News
+```
+
+This is the final identity-spine rule for the system.
+
+---
+
+## 22. Verification Notes Captured During This Architecture Pass
+
+Actions taken during architecture capture:
+
+1. Read canonical Hermes vault `SCHEMA.md` and `index.md`.
+2. Read Meddash backend map, data spine, and CQ newsletter pipeline design.
+3. Inspected live n8n SQLite workflows, nodes, connections, and active flags.
+4. Inspected live Ops API route map and runner files.
+5. Pulled Paperclip live agent roster from API.
+6. Verified n8n HTTP 200, Ops API health OK, Paperclip HTTP 200.
+7. Verified Supabase table counts through existing CQ environment without printing secrets.
+8. Found and fixed live CQ n8n Paperclip trigger flaw:
+   - Replaced short `assignee` fields with full `assigneeAgentId` UUIDs.
+   - Corrected CQ-Monitor assignment to CQ-Monitor UUID, not CQ-Researcher.
+   - Added explicit `Wake CQ-Selector Agent` node.
+   - Added explicit `Wake CQ-Monitor Agent` node.
+9. Documented n8n activation caveat after DB patches.
+
+---
+
+## 23. One-Line Current Workflow Definition
+
+Meddash/CQ current production design is:
+
+`n8n schedule/command poll → local Ops API → bounded Python engines → local SQLite + Supabase ticker spine/events → Paperclip assigned+woken agents → Obsidian/Hermes logs/drafts → Telegram human-visible alerts → Dr. Don manual review/publish`
+
+This is the current full architecture snapshot.
+
+---
+
+# Architecture Addendum — No-Loose-Ends Operational Blueprint Patch
+
+Patched: 2026-04-29 02:30 EDT
+Reason: the first blueprint captured the core live CQ/n8n/Ops/Paperclip topology, but the master map was not granular enough for an operational blueprint. This addendum explicitly maps all known external/internal data sources, crawl/API modality, deduplication engines, manual product-generation lanes, dashboard/front-end surfaces, the CQ free newsletter path, and Phase 2 architecture lineage.
+
+## A. Complete Data Source Surface — Source, Modality, Consumer, Persistence
+
+| # | Data source / surface | Modality | Primary consumer script/component | Persisted to | Operational notes |
+|---|---|---|---|---|---|
+| 1 | PubMed / NCBI E-utilities | API + XML/JSON extraction | `01_KOL_Data_Engine/extract_publications.py` | `meddash_kols.db`, Supabase `kols`, publication/authorship tables when synced | Source for publications, authors, ORCID hints, publication signal. In Phase 2 diagram this is the KOL data root. |
+| 2 | ORCID identifiers inside PubMed/publication metadata | XML/metadata field, not independent crawl in current map | `kol_disambiguator.py`, `sync_scholar_citations.py` matching logic | staging/final KOL identity fields | Highest-confidence KOL disambiguation signal when present. |
+| 3 | SCImago / journal metrics | local/reference data, CSV/DB style enrichment | `kol_weight.py`, `generate_kol_brief.py` joins journal metrics | `journal_metrics`, publication weight/APW fields | Used for SJR/APW quality weighting. |
+| 4 | ClinicalTrials.gov v2 | API JSON | `02_CT_Data_Engine/ct_crawler.py` → `ct_ingestion.py` | `ct_trials.db`, Supabase `trials` | Root of trial, intervention, condition, sponsor, investigator, eligibility, result data. |
+| 5 | ClinicalTrials.gov trial details | API JSON nested records | `ct_mesh_mapper.py`, `ct_results_parser.py`, `ct_eligibility_parser.py`, `ct_kol_bridge.py`, `ct_pub_bridge.py` | CT normalized tables: conditions/interventions/sponsors/investigators/eligibility/results | Feeds KOL brief generator and TA landscape generator. |
+| 6 | BioCrawler company discovery | API mode + HTML/deep web crawl mode | `03_BioCrawler_GTM/biocrawler.py` | `biocrawler_leads.db`, Supabase `biotech_leads` | GTM lead source. Ticker field is not canonical. Old fuzzy ticker enrichment disabled. |
+| 7 | Company websites / IR pages | HTML crawl / site scrape | `biocrawler.py` deep mode | `biocrawler_leads.db` | Used for lead intelligence and company enrichment, not for canonical ticker identity. |
+| 8 | Clearbit / company enrichment | API-based enrichment where configured | `biocrawler.py` deep mode / GTM enrichment | `biocrawler_leads.db` | External enrichment; availability depends on credentials and script path. |
+| 9 | SEC EDGAR company filings | SEC API / JSON / filing text | `phase1_regulatory/sec_8k_monitor.py`; BioCrawler deep scan references EDGAR | Supabase `cq_regulatory_catalysts`; ticker spine joins by ticker/CIK | SEC 8-K catalyst detector. Now reads canonical ticker spine, uses explicit request timeout, and scans a bounded daily ticker cap instead of hanging the CQ run. |
+| 10 | SEC ticker/CIK mapping | SEC JSON/listing map | `market_data/build_biotech_ticker_registry.py` | Supabase `biotech_tickers`, `biotech_ticker_aliases` | One of the canonical ticker spine sources. |
+| 11 | Alpha Vantage LISTING_STATUS | API CSV/listing source | `market_data/build_biotech_ticker_registry.py` | Supabase `biotech_tickers`, `biotech_ticker_aliases` | Produces broad verified security universe. Current run: 13,320 listing rows; 13,257 upserted securities. |
+| 12 | Alpha Vantage NEWS_SENTIMENT | API JSON prototype | `phase3_sentiment/alpha_vantage_tracker.py` | Intended `cq_market_sentiment` | Prototype exists; not yet main daily production path except ticker/listing registry source. |
+| 13 | Yahoo Finance ticker headline RSS | RSS/XML feed | `market_data/pull_yahoo_ticker_news.py` | Supabase `cq_market_sentiment`, `cq_market_events` | Link-level/news metadata only; no full article storage. Current stage scans bounded ticker set and stores headline/source/url/published time. |
+| 14 | PR Newswire / GlobeNewswire / BusinessWire-like feeds | RSS/XML via `requests.get(..., timeout=15)` then `feedparser` | `phase1_regulatory/pr_wire_aggregator.py` | Supabase `cq_regulatory_catalysts` | PR Wire timeout fixed; bad BusinessWire HTML endpoint removed/disabled. |
+| 15 | FDA/PDUFA public data | public FDA/calendar style scrape/API-like page parse depending script internals | `phase1_regulatory/fda_pdufa_tracker.py` | Supabase `cq_regulatory_catalysts` | Uses ticker spine/company aliases for mapping; analyzes verified aliases instead of fuzzy BioCrawler tickers. |
+| 16 | Massive market data | API/prototype | `phase4_quant/massive_tracker.py` | Intended `cq_price_bars` | Prototype exists; table `cq_price_bars` created; not yet promoted into full production daily ingest. |
+| 17 | Google Scholar via SerpApi | API + manual URL/ID mode | `09_Scholar_Engine/sync_scholar_citations.py` through `api_server.py` | `kol_scholar_metrics`, `scholar_review_queue`, KOL scholar fields | Manual lane exists for staging and final KOL rows; rate-limited/credential dependent. |
+| 18 | UMLS / disease ontology APIs | API | `08_MDM_Ontology_Engine/build_disease_ontology.py` | disease criteria / ontology DB layer | Standardizes disease/criteria concepts; weekly sync in Phase 2 lineage. |
+| 19 | Google Sheets CRM | Google Sheets API/manual sync | `03_BioCrawler_GTM/push_to_sheets.py`, `pull_from_sheets.py` | Google Sheet + `biocrawler_leads.db` | Sheet now used for selected lead workflow; old obsolete CRM path replaced. |
+| 20 | Supabase Postgres / REST | Postgres connection + REST API | Meddash dashboard, CQ scripts, Ops API, n8n indirectly | all Supabase Meddash/CQ tables | Central cloud data layer. Credentials loaded from `.env`; values never documented. |
+| 21 | Local SQLite shared datastores | local SQLite | Meddash backend engines and dashboard | `meddash_kols.db`, `ct_trials.db`, `biocrawler_leads.db`, others | Local operational/state layer for engines and product generation. |
+| 22 | n8n workflow DB | local SQLite | n8n runtime | `/home/doc_victus/.n8n/database.sqlite` | Stores workflow topology. DB-level patches require UI hard refresh/re-activation. |
+| 23 | Paperclip API | local HTTP API | n8n HTTP Request nodes, Alfred/Hermes operations | Paperclip issue/agent store | Agent orchestration layer. Correct assignment is `assigneeAgentId` plus explicit `/wakeup`. |
+| 24 | Telegram Bot API | HTTPS bot API, centralized through Ops API | `telegram_notifier.py`, `meddash_ops_api.py` | Telegram messages only | Operational alerts for Meddash/CQ. n8n does not use Telegram nodes directly. |
+| 25 | Obsidian / Hermes Agent Win Files | local markdown vault | CQ agents, Alfred, architecture, newsletter drafts | Markdown source-of-truth | Stores architecture, posted-events log, CQ newsletter drafts, research notes. |
+| 26 | Substack | manual publishing | Dr. Don | external public newsletter | Manual copy/paste from Obsidian daily brief; no automated posting yet. |
+| 27 | LinkedIn | manual publishing | Dr. Don | external public social post | Manual copy/paste; no automated spam. |
+| 28 | X/Twitter | planned Paperclip/X bot | future CQ distribution agent | future external social output | Not yet production; guardrails required. |
+| 29 | Base44 Meddash lite/search tool | separate web/front-end surface | future tab/subdomain | Base44 app/subdomain | Separate from meddash.ai marketing page and Streamlit internal dashboard. |
+| 30 | Streamlit Meddash-CQ Dashboard | local web app on port 5090 | `CTO/Meddash-CQ_Dashboard/app.py` + widgets | reads Supabase + SQLite + product dirs | Operational cockpit, not the architecture rendering engine. |
+
+## B. Master System Map With Data Sources Included
+
+```mermaid
+flowchart LR
+  subgraph ext[External Data Sources]
+    PubMed[PubMed / NCBI
+API + XML]
+    CTGov[ClinicalTrials.gov v2
+API JSON]
+    SEC[SEC EDGAR + CIK Map
+API/JSON/Filing Text]
+    FDA[FDA/PDUFA Sources
+Public Web/API-like Parse]
+    PR[PR Newswire/GlobeNewswire
+RSS XML]
+    Yahoo[Yahoo Finance Headlines
+RSS XML]
+    AV[Alpha Vantage
+Listing CSV + News API]
+    Massive[Massive Market Data
+API Prototype]
+    Scholar[Google Scholar via SerpApi
+API + Manual URL]
+    UMLS[UMLS / Disease Ontology
+API]
+    CompanyWeb[Company/IR Websites
+HTML Crawl]
+    Sheets[Google Sheets CRM
+API + Manual Review]
+    Substack[Substack
+Manual Publish]
+    LinkedIn[LinkedIn
+Manual Publish]
+  end
+
+  subgraph meddash[Meddash Engines]
+    KOL[01 KOL Data Engine
+bounded scheduled lane + manual deep lane]
+    CT[02 CT Data Engine
+ct_crawler/ingestion/mesh/results/eligibility/bridges]
+    Bio[03 BioCrawler GTM
+API + deep crawl]
+    Brief[04 KOL Brief Product
+generate_kol_brief/export_kols]
+    TA[05 TA Landscape Product
+fetch/generate/export]
+    Ont[08 MDM Ontology]
+    ScholarSync[09 Scholar Engine
+sync_scholar_citations]
+    Centrality[10 KOL Centrality Engine
+run_centrality]
+  end
+
+  subgraph cq[CQ Engines]
+    Spine[Ticker Spine
+build_biotech_ticker_registry]
+    YahooPull[Yahoo Link Ingest
+pull_yahoo_ticker_news]
+    SEC8K[SEC 8-K Monitor
+request timeout + scan cap]
+    FDAPDUFA[FDA PDUFA Tracker]
+    PRWire[PR Wire Aggregator]
+    AVSent[Alpha Vantage Sentiment
+prototype]
+    MassivePrice[Massive Price Bars
+prototype]
+  end
+
+  subgraph stores[Persistence]
+    LocalKOL[(meddash_kols.db)]
+    LocalCT[(ct_trials.db)]
+    LocalBio[(biocrawler_leads.db)]
+    Supa[(Supabase Postgres/REST
+kols/trials/biotech_leads/ticker spine/cq tables)]
+    Vault[(Hermes/Obsidian Vault
+newsletter/research/posted-events/architecture)]
+    ProductDirs[(Product Output Folders
+KOL briefs / TA landscapes)]
+  end
+
+  subgraph orchestration[Orchestration]
+    n8n[n8n 5678
+Schedule + HTTP only]
+    Ops[Local Ops API 8765
+/meddash/engine01 bounded KOL /meddash/health /cq/ticker-spine /cq/detect /cq/latest-report]
+    Paperclip[Paperclip 3100
+Issues + Agents + Wakeups]
+    Telegram[Telegram Alerts
+via Ops API]
+    Dashboard[Streamlit Dashboard 5090
+Factory Floor/Pulse/Health/CQ Panel/KOL Ingest]
+  end
+
+  PubMed --&gt; KOL --&gt; LocalKOL --&gt; Supa
+  CTGov --&gt; CT --&gt; LocalCT --&gt; Supa
+  CompanyWeb --&gt; Bio --&gt; LocalBio --&gt; Supa
+  Sheets &lt;--&gt; Bio
+  UMLS --&gt; Ont --&gt; Supa
+  Scholar --&gt; ScholarSync --&gt; Supa
+  LocalKOL --&gt; Centrality --&gt; Supa
+  LocalKOL --&gt; Brief
+  LocalCT --&gt; Brief
+  LocalBio --&gt; Brief
+  Supa --&gt; Brief --&gt; ProductDirs
+  Supa --&gt; TA --&gt; ProductDirs
+
+  AV --&gt; Spine
+  SEC --&gt; Spine
+  Spine --&gt; Supa
+  Yahoo --&gt; YahooPull --&gt; Supa
+  SEC --&gt; SEC8K --&gt; Supa
+  FDA --&gt; FDAPDUFA --&gt; Supa
+  PR --&gt; PRWire --&gt; Supa
+  AV --&gt; AVSent -.prototype.-&gt; Supa
+  Massive --&gt; MassivePrice -.prototype.-&gt; Supa
+
+  n8n --&gt; Ops
+  Ops --&gt; Spine
+  Ops --&gt; YahooPull
+  Ops --&gt; SEC8K
+  Ops --&gt; FDAPDUFA
+  Ops --&gt; PRWire
+  Ops --&gt; Telegram
+  n8n --&gt; Paperclip
+  Paperclip --&gt; Vault
+  Supa --&gt; Paperclip
+  Vault --&gt; Substack
+  Vault --&gt; LinkedIn
+  Dashboard --&gt; Supa
+  Dashboard --&gt; LocalKOL
+  Dashboard --&gt; LocalCT
+  Dashboard --&gt; LocalBio
+  Dashboard --&gt; ProductDirs
+```
+
+## C. Deduplication, Identity Resolution, and Duplicate Guards
+
+| Layer | Engine / file | Duplicate problem solved | Current method | Output / dependency |
+|---|---|---|---|---|
+| KOL identity Tier 1 | `01_KOL_Data_Engine/kol_disambiguator.py` | Same expert appears across publication pulls | ORCID / score threshold auto-resolution | updates `kols_staging`; uncertain pairs route to `kol_merge_candidates` |
+| KOL identity Tier 2 | Streamlit/Next/FastAPI sandbox via `api_server.py` endpoints | Human review needed for uncertain duplicate pairs | UI review: same/distinct/escalate | commits clean KOLs into final `kols` / local `meddash_kols.db` |
+| KOL identity Tier 3 | `deep_disambiguation_needed` / review path | Ambiguous/complex duplicate cases | escalation queue | manual/LLM context review |
+| Scholar identity | `09_Scholar_Engine/sync_scholar_citations.py` | Wrong Google Scholar profile matched to KOL | 4-tier matching: ORCID, exact name+institution, affiliation/specialty, manual review | `kol_scholar_metrics`, scholar status fields, review queue |
+| Centrality reliability | `10_KOL_Centrality_Engine/reliability.py` | duplicate KOL records split graph centrality | applies reliability penalty when duplicate warning exists | `kol_centrality_scores` with reliability/limitations |
+| Ticker identity | `market_data/build_biotech_ticker_registry.py` | BioCrawler name → ticker fuzzy mismatch | market/security source first; SEC CIK + exact normalized names; fuzzy never auto-writes | `biotech_tickers`, `biotech_ticker_aliases`, `biocrawler_ticker_matches` |
+| Old ticker enrichment guard | `scripts/enrich_tickers.py` guard stub | accidental restart of old fuzzy auto-writer | original moved to `.DISABLED_FUZZY_DO_NOT_RUN`; stub blocks use | prevents mutation of `biotech_leads.ticker` by fuzzy guesses |
+| CQ posted catalyst dedup | `projects/clinical-quant/posted-events-log.md` + CQ-Selector instructions | newsletter repeats same catalyst | append-only posted event ledger checked before selection | final daily brief excludes previously posted items |
+| CQ source/link dedup | `pull_yahoo_ticker_news.py`, PR/feed scripts, Supabase tables | duplicate URLs/headlines across RSS/API sources | link/source/ticker-level uniqueness and bounded inserts | `cq_market_sentiment`, `cq_market_events`, `cq_regulatory_catalysts` |
+| Paperclip issue dedup/trace | Paperclip issues/comments | agent work repetition / lost state | parent issue + subissue/comment history; explicit wakeup | visible task state for CQ-Selector/CQ-Monitor/Researcher |
+| n8n workflow dedup | Schedule + manual trigger discipline | duplicate cron/manual runs | n8n execution history + explicit HTTP routes; no hidden script execution nodes | current workflows need UI active toggle verification |
+
+## D. Manual KOL Brief Generator and Product Path
+
+### Files and product folders
+
+- Generator: `/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/04_Product_KOL_Briefs/generate_kol_brief.py`
+- Export helper: `/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/04_Product_KOL_Briefs/export_kols.py`
+- Output directory: `/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/04_Product_KOL_Briefs/kol_briefs/`
+- Current outputs include:
+  - `kol_brief_kras_g12c_lung_cancer.md`
+  - `kol_brief_kras_g12c_lung_cancer.json`
+  - TA landscape Markdown files and chart PNGs for KRAS examples
+
+### Brief-generation dependency chain
+
+```mermaid
+flowchart TB
+  Query[Manual query
+Example: KRAS G12C lung cancer] --&gt; BriefGen[generate_kol_brief.py]
+  CTDB[(ct_trials.db
+trials/conditions/interventions/sponsors/investigators/eligibility/results)] --&gt; BriefGen
+  KOLDB[(meddash_kols.db
+KOLs/publications/authorships/journal metrics/TA)] --&gt; BriefGen
+  Bridge[ct_kol_bridge output
+trial investigator to KOL linkage] --&gt; BriefGen
+  BriefGen --&gt; Score[Composite score
+50% trial activity + 30% publication signal + 20% indication specificity]
+  Score --&gt; MD[Markdown brief output]
+  Score --&gt; JSON[JSON brief output for SaaS/API]
+  MD --&gt; Human[Manual review/edit by Dr. Don]
+  JSON --&gt; Dashboard[Dashboard/product display future lane]
+```
+
+### What the generator actually uses
+
+- CT pathway:
+  - matched NCT IDs from trial conditions/title/interventions
+  - investigator roles and affiliations
+  - Phase 2/3 weighting
+  - industry sponsorship
+  - active/recruiting trial status
+  - biomarker/stage/eligibility details
+- KOL pathway:
+  - bridged KOL ID where available
+  - publication count
+  - journal/SJR signal
+  - therapeutic area metadata
+- Output:
+  - human-readable KOL intelligence brief
+  - machine-readable JSON for future SaaS/API/dashboard
+
+## E. Front-End / Dashboard Surfaces
+
+### Current Streamlit operational cockpit
+
+Path: `/mnt/c/Users/email/.gemini/antigravity/CTO/Meddash-CQ_Dashboard/`
+
+Important files:
+
+- `app.py` — Streamlit application shell
+- `config.py` — central paths, Supabase env loading, SQLite paths, product paths, table config
+- `supabase_client.py` — Supabase access helper
+- `widgets/factory_floor.py` — factory floor/product/engine cards; CQ department narrative
+- `widgets/pulse.py` — pipeline/business pulse metrics
+- `widgets/pipeline_health.py` — engine health, DB/product freshness, Mermaid health map
+- `widgets/meddash_panel.py` — Meddash-specific panel
+- `widgets/cq_panel.py` — Clinical Quant panel and CQ-Free Newsletter branch description
+- `widgets/kol_ingest.py` — KOL ingest surface
+- `widgets/operations.py` — operations/costs/status surface
+- `widgets/meddash_crm.py` — CRM placeholder/coming-soon lane
+
+### Dashboard data dependencies
+
+```mermaid
+flowchart LR
+  App[Streamlit app.py
+port 5090] --&gt; Config[config.py]
+  Config --&gt; Supabase[(Supabase
+kols/trials/leads/cq/centrality)]
+  Config --&gt; KOLDB[(meddash_kols.db)]
+  Config --&gt; CTDB[(ct_trials.db)]
+  Config --&gt; BioDB[(biocrawler_leads.db)]
+  Config --&gt; Products[(KOL brief + TA landscape folders)]
+  App --&gt; Factory[Factory Floor widget]
+  App --&gt; Pulse[Pulse widget]
+  App --&gt; Health[Pipeline Health widget]
+  App --&gt; CQPanel[CQ Panel / Free Newsletter narrative]
+  App --&gt; KOLIngest[KOL Ingest]
+  App --&gt; Ops[Operations]
+  App --&gt; CRM[Meddash CRM placeholder]
+```
+
+### Phase 2 UI lineage still relevant as architecture reference
+
+The Phase 2 workflow file `CTO/MEDDASH_BACKEND_WORKFLOW/ver 2.0_organized_meddashbackend_schema.txt` maps the earlier local SaaS UI / FastAPI middleware architecture:
+
+- Next.js 15 local SaaS UI pages:
+  - Dashboard UI Page
+  - Crawler Control &amp; Execution UI
+  - Campaign Sandbox Validation UI
+  - Scholar Enrichment UI
+  - System Health &amp; Log Streaming UI
+- FastAPI sidecar:
+  - `api_server.py` REST bridge
+  - subprocess manager for backend scripts
+  - `/api/sandbox/*` dedup/commit endpoints
+  - `/api/scholar/*` manual Scholar endpoints
+- Current Phase 3 architecture keeps those learnings but operational automation is now centered on:
+  - n8n as clock/router
+  - Ops API as local execution bridge
+  - Paperclip as worker/agent system
+  - Streamlit as operational cockpit
+
+## F. CQ Free Newsletter Path — Full Operational Blueprint
+
+```mermaid
+flowchart TB
+  Schedule[n8n Daily Schedule
+11:00 UTC + Manual Test Trigger] --&gt; TickerNode[HTTP: Run CQ Ticker Spine
+POST /cq/ticker-spine]
+  TickerNode --&gt; DetectNode[HTTP: Run CQ Detection
+POST /cq/detect]
+  DetectNode --&gt; Ops[meddash_ops_api.py]
+  Ops --&gt; Runner[cq_pipeline_runner.py detect]
+  Runner --&gt; Spine[build_biotech_ticker_registry.py]
+  Runner --&gt; Yahoo[pull_yahoo_ticker_news.py]
+  Runner --&gt; SEC8K[sec_8k_monitor.py]
+  Runner --&gt; FDA[fda_pdufa_tracker.py]
+  Runner --&gt; PR[pr_wire_aggregator.py]
+  Spine --&gt; Supa[(Supabase ticker spine)]
+  Yahoo --&gt; Supa
+  SEC8K --&gt; Supa
+  FDA --&gt; Supa
+  PR --&gt; Supa
+  DetectNode --&gt; SelectorIssue[Create CQ-Selector Paperclip Issue
+assigneeAgentId full UUID]
+  SelectorIssue --&gt; WakeSelector[POST /api/agents/CQ-Selector/wakeup]
+  WakeSelector --&gt; Selector[CQ-Selector Agent
+reads catalysts + posted-events log]
+  Selector --&gt; Dedup[Dedup against posted-events-log.md
+and issue history]
+  Dedup --&gt; ResearchIssues[Create/assign research subissues
+CQ-Researcher path if catalysts exist]
+  Selector --&gt; Draft[Write daily brief draft
+newsletter/YYYY-MM-DD-daily-brief.md]
+  DetectNode --&gt; MonitorIssue[Create CQ-Monitor Paperclip Issue
+assigneeAgentId full UUID]
+  MonitorIssue --&gt; WakeMonitor[POST /api/agents/CQ-Monitor/wakeup]
+  WakeMonitor --&gt; Monitor[CQ-Monitor
+QA/status/logging]
+  Draft --&gt; Telegram[Ops API latest report / Telegram alert]
+  Draft --&gt; Review[Dr. Don manual review]
+  Review --&gt; Substack[Manual Substack publish]
+  Review --&gt; LinkedIn[Manual LinkedIn publish]
+```
+
+### CQ newsletter persistence and files
+
+- Newsletter drafts:
+  - `/mnt/c/Users/email/Hermes Agent Win Files/projects/clinical-quant/newsletter/`
+  - example current draft: `2026-04-29-daily-brief.md`
+- Dedup log:
+  - `/mnt/c/Users/email/Hermes Agent Win Files/projects/clinical-quant/posted-events-log.md`
+- Template:
+  - `/mnt/c/Users/email/Hermes Agent Win Files/projects/clinical-quant/daily-brief-template.md`
+- Design reference:
+  - `/mnt/c/Users/email/Hermes Agent Win Files/projects/clinical-quant/newsletter-pipeline-design.md`
+
+### Newsletter critical guardrails
+
+- n8n does not write the newsletter; it only triggers Ops API and Paperclip issues.
+- Paperclip agents must use `assigneeAgentId`, not short `assignee`.
+- Paperclip issues must be followed by explicit agent wakeup.
+- Dr. Don manually approves and publishes to Substack/LinkedIn.
+- `posted-events-log.md` is append-only and must not be deleted/reset.
+
+## G. Data Engines and Script Inventory Missing From First Master Map
+
+### Meddash backend engines
+
+| Engine | Directory | Main files | Role |
+|---|---|---|---|
+| KOL Data | `01_KOL_Data_Engine` | `nightly_scheduler.py`, `run_pipeline.py`, `extract_publications.py`, `db_ingestion.py`, `kol_disambiguator.py`, `kol_weight.py`, `review_disambiguations.py` | PubMed/XML KOL ingestion, identity resolution, weighting |
+| Clinical Trials | `02_CT_Data_Engine` | `ct_crawler.py`, `ct_ingestion.py`, `ct_mesh_mapper.py`, `ct_kol_bridge.py`, `ct_results_parser.py`, `ct_pub_bridge.py`, `ct_eligibility_parser.py` | ClinicalTrials.gov JSON ingestion and normalization |
+| BioCrawler GTM | `03_BioCrawler_GTM` | `biocrawler.py`, `bridge_engine.py`, `push_to_sheets.py`, `pull_from_sheets.py` | Lead/company crawl, relationship bridge, Google Sheets CRM sync |
+| KOL Brief Product | `04_Product_KOL_Briefs` | `generate_kol_brief.py`, `export_kols.py` | Manual/client-ready KOL intelligence brief generation |
+| TA Landscape Product | `05_Product_TA_Landscape` | `fetch_ta_landscape_data.py`, `generate_ta_landscape.py`, `generate_ta_landscape_stepwise.py`, `export_to_docx.py` | Therapeutic area landscape reports |
+| Shared Datastores | `06_Shared_Datastores` | SQLite DB files | local engine state/data layer |
+| DevOps/Observability | `07_DevOps_Observability` | `meddash_ops_api.py`, `meddash_pipeline_runner.py`, `pipeline_summary.py`, `telegram_notifier.py` | local execution bridge, summaries, Telegram alerts |
+| MDM Ontology | `08_MDM_Ontology_Engine` | `build_disease_ontology.py` | disease/criteria standardization |
+| Scholar Engine | `09_Scholar_Engine` | `sync_scholar_citations.py` | manual/API Scholar metrics enrichment |
+| KOL Centrality | `10_KOL_Centrality_Engine` | `run_centrality.py`, `reliability.py` | authorship network centrality and reliability scoring |
+
+### CQ script engines
+
+| CQ Engine | File | Data source | Output |
+|---|---|---|---|
+| ticker spine schema | `market_data/create_ticker_spine_schema.sql` | migration definition | ticker/news/price/candidate tables |
+| schema applier | `market_data/apply_ticker_spine_schema.py` | Supabase URI from `.env` | applied tables/columns |
+| ticker registry | `market_data/build_biotech_ticker_registry.py` | Alpha Vantage listings + SEC CIK map + BioCrawler DB | `biotech_tickers`, aliases, reverse matches |
+| Yahoo link ingest | `market_data/pull_yahoo_ticker_news.py` | Yahoo RSS XML | `cq_market_sentiment`, `cq_market_events` |
+| SEC 8-K monitor | `phase1_regulatory/sec_8k_monitor.py` | SEC filings/API | `cq_regulatory_catalysts` |
+| FDA/PDUFA tracker | `phase1_regulatory/fda_pdufa_tracker.py` | FDA/PDUFA public data | `cq_regulatory_catalysts` |
+| PR Wire aggregator | `phase1_regulatory/pr_wire_aggregator.py` | RSS XML feeds | `cq_regulatory_catalysts` |
+| Alpha Vantage sentiment | `phase3_sentiment/alpha_vantage_tracker.py` | Alpha Vantage API | prototype for `cq_market_sentiment` |
+| Massive quant tracker | `phase4_quant/massive_tracker.py` | Massive API | prototype for `cq_price_bars` |
+| CQ runner | `cq_pipeline_runner.py` | local script orchestration | output JSON to Ops API/n8n |
+
+## H. Updated Master HTML Requirements
+
+The corresponding HTML atlas must not rely only on the compact animated master map. It must include:
+
+1. A dedicated data-source matrix showing every source and modality: API, XML/RSS, HTML crawl, manual, local DB, or prototype.
+2. A Meddash product lane including the manual KOL brief generator and TA landscape generators.
+3. A dashboard/front-end lane showing Streamlit port 5090 and the old Phase 2 Next.js/FastAPI architecture lineage.
+4. A deduplication/identity-resolution lane covering KOL disambiguation, Scholar matching, ticker spine reversal, CQ posted-events log, and Paperclip issue dedup.
+5. A CQ free newsletter lane ending in Obsidian draft, Telegram alert, manual Substack, and manual LinkedIn.
+6. The full data-source nodes shown on the master map, not only generic “external sources.”
+
+## I. Known Remaining Loose Ends / Future Work
+
+- Massive price-bar ingestion is table-ready but still prototype-level.
+- Alpha Vantage news sentiment is script/prototype-level; Yahoo RSS is the current bounded link metadata stage.
+- Streamlit dashboard is operational but visually older; this HTML atlas is intentionally separate and richer.
+- Base44 Meddash lite/search remains separate from meddash.ai and from the local Streamlit cockpit.
+- Twitter/X bot is planned but not production-wired.
+- n8n workflow active flags must be confirmed in UI after DB patching.
+
+---
+
+# Architecture Addendum — C-Run Verification and Freshness-Lane Patch
+
+Patched: 2026-04-29 18:52:29 EDT
+Reason: Section C full-run verification exposed differences between the intended architecture and the safe production execution architecture. The architecture now distinguishes full/deep manual rebuilds from bounded scheduled freshness lanes.
+
+## J. C-Run Verification Results Now Reflected in Architecture
+
+| Layer | Previous assumption / issue | Current architecture after fix | Verification |
+|---|---|---|---|
+| KOL Engine 01 | Scheduled lane ran the same as deep KOL crawl and could process `545` BioCrawler targets x `50` PubMed results plus disambiguation/weights/centrality. | Scheduled/Ops lane is bounded: `--max-targets 5 --max-results 5 --skip-disambiguation --skip-weights --skip-centrality --json-summary`. Deep rebuild remains manual/supervised. | Direct bounded run `success` in `135.19s`; live `/meddash/engine01` `success` in `122.95s`. |
+| PubMed calls | Bio.Entrez calls had no explicit socket timeout. | `extract_publications.py` sets a process-wide socket timeout using `MEDDASH_PUBMED_TIMEOUT`, default `20s`. | KOL scheduled lane completed through Ops API. |
+| CT health | Ops API health expected `ct_delta_summary.json`, but CT crawler writes `ct_crawler_summary.json`. | Ops API health maps logical `ct_delta` to actual file `ct_crawler_summary.json`. | Live `/meddash/health`: `ct_delta=success`. |
+| SEC 8-K | SEC request path could hang CQ detection; runner allowed only `60s`. | SEC script has bounded request timeout, bounded Supabase insert timeout, and daily scan cap `CQ_SEC_MAX_TICKERS` default `40`; runner gives SEC `120s`. | `/cq/detect` rerun `success` in `106.21s`. |
+| Telegram | Some scripts still emit stale internal Telegram 404s. | Ops API Telegram is authoritative; internal script Telegram should remain disabled/cleaned. | `/meddash/health`, `/cq/detect`, `/cq/latest-report` Telegram sends verified OK. |
+| n8n | Workflows exist but DB active flags are `0`. | Architecture treats n8n as intended clock/router, but current verified execution lane is direct Ops API until UI activation/toggle. | C-run verified via Ops API; n8n UI activation remains operator step. |
+| Dashboard | Dashboard page refresh and stale upstream data were conflated. | Streamlit app now has browser meta-refresh and last-render marker; Dashboard-Monitor is for freshness/accountability, not for updating DB. | Streamlit health/root OK; stale/partial statuses now surface visibly. |
+
+## K. Bounded Scheduled Lane vs Deep Manual Lane
+
+```mermaid
+flowchart LR
+    subgraph Scheduled[Scheduled / Ops API Freshness Lane]
+        N8N[n8n schedule or manual test] --&gt; Ops[Ops API]
+        Ops --&gt; KOLBounded[Engine 01 bounded KOL
+5 targets x 5 results
+skip disambiguation/weights/centrality]
+        Ops --&gt; CTDelta[Engine 02 CT delta
+ct_crawler_summary.json]
+        Ops --&gt; BioBounded[Engine 03 BioCrawler
+--mode test]
+        Ops --&gt; Health[Meddash health
+summary files + DB counts + Telegram]
+    end
+
+    subgraph Deep[Manual / Supervised Deep Rebuild Lane]
+        Human[Alfred / Dr. Don supervised run] --&gt; KOLDeep[Full KOL crawl
+large target set + PubMed pulls]
+        KOLDeep --&gt; Disambig[Full disambiguation]
+        Disambig --&gt; Weights[Publication weights]
+        Weights --&gt; Centrality[Centrality engine]
+    end
+
+    KOLBounded --&gt; KOLDB[(meddash_kols.db)]
+    KOLDeep --&gt; KOLDB
+    Health --&gt; Telegram[Telegram OK]
+```
+
+## L. Updated C-Run Green State
+
+- Meddash Ops API `/meddash/health` verified:
+  - `kol_pipeline: success`
+  - `ct_delta: success`
+  - `biocrawler: success`
+  - Telegram OK
+- CQ Ops API verified:
+  - `/cq/ticker-spine`: success
+  - `/cq/detect`: success after SEC timeout patch
+  - `/cq/latest-report`: Telegram OK
+- Paperclip verification:
+  - CQ-Selector issue `THE-12` assigned by full `assigneeAgentId` and wakeup accepted HTTP `202`
+  - CQ-Monitor issue `THE-13` assigned by full `assigneeAgentId` and wakeup accepted HTTP `202`
+- Current remaining operator caveat:
+  - n8n workflows remain `active=0` in SQLite and must be toggled active in the n8n UI for schedules to fire automatically.
+
+## M. Files Changed by This Architecture Patch
+
+- `01_KOL_Data_Engine/nightly_scheduler.py`
+- `01_KOL_Data_Engine/run_pipeline.py`
+- `01_KOL_Data_Engine/extract_publications.py`
+- `07_DevOps_Observability/meddash_pipeline_runner.py`
+- `07_DevOps_Observability/meddash_ops_api.py`
+- `CTO/CQ_Team/scripts/phase1_regulatory/sec_8k_monitor.py`
+- `CTO/CQ_Team/scripts/cq_pipeline_runner.py`
+- `CTO/Meddash-CQ_Dashboard/app.py`
+- `CTO/Meddash-CQ_Dashboard/widgets/pulse.py`
+- `CTO/Meddash-CQ_Dashboard/widgets/pipeline_health.py`
+- `CTO/Meddash-CQ_Dashboard/widgets/factory_floor.py`
+
+## N. Updated One-Line Architecture Definition
+
+`n8n clock/router, currently inactive until UI toggle → Ops API verified execution lane → bounded scheduled freshness engines → local SQLite/Supabase summaries → Paperclip assigned+woken agents → Ops API Telegram → Streamlit dashboard auto-refresh + Dashboard-Monitor accountability → Dr. Don manual review/publish`
+
+</pre></section>
+
+<footer class="panel"><p class="sub">MDP3 Architecture Atlas • Source: mdp3.architecture.20260429-0215.md • HTML: mdp3.architecture.20260429-0215.html • Secrets intentionally omitted.</p></footer>
+</main></div>
+<script>
+mermaid.initialize({startOnLoad:true,theme:'dark',securityLevel:'loose',flowchart:{useMaxWidth:true,htmlLabels:true,curve:'basis'},sequence:{useMaxWidth:true},er:{useMaxWidth:true}});
+const search=document.getElementById('search');
+search.addEventListener('input',()=>{const q=search.value.toLowerCase().trim();document.querySelectorAll('.searchable,.mermaid-panel').forEach(el=>{el.style.display=!q||el.innerText.toLowerCase().includes(q)?'block':'none';})});
+</script>
+
+
+<section class="section" id="no-loose-ends-patch" data-search="data sources api xml rss crawl kol brief dashboard dedup cq free newsletter phase 2">
+  <div class="section-title"><span class="accent">Blueprint Patch</span><h2>No-Loose-Ends Operational Map</h2></div>
+  <p class="muted">This patch expands the master atlas with every currently known data source, source modality, deduplication gate, manual KOL brief lane, Streamlit/front-end lane, CQ free newsletter path, and Phase 2 workflow lineage. It corrects the earlier map being too compressed at the source/product layers.</p>
+
+  <div class="panel" style="overflow:auto; margin-top:18px;">
+    <h3>Expanded Master Map — Data Sources → Engines → Stores → Products → Distribution</h3>
+    <svg viewBox="0 0 1850 1180" role="img" aria-label="Expanded Meddash CQ architecture map with data sources" style="width:100%; min-width:1500px; border-radius:22px; background:linear-gradient(135deg, rgba(2,6,23,.94), rgba(15,23,42,.92)); border:1px solid rgba(148,163,184,.18);">
+      <defs>
+        <marker id="arrow2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#67e8f9"/></marker>
+        <linearGradient id="sourceGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#334155"/><stop offset="1" stop-color="#0f172a"/></linearGradient>
+        <linearGradient id="engineGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#065f46"/><stop offset="1" stop-color="#022c22"/></linearGradient>
+        <linearGradient id="cqGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#164e63"/><stop offset="1" stop-color="#083344"/></linearGradient>
+        <linearGradient id="storeGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4c1d95"/><stop offset="1" stop-color="#1e1b4b"/></linearGradient>
+        <linearGradient id="productGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#78350f"/><stop offset="1" stop-color="#431407"/></linearGradient>
+        <filter id="glow2"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <style>
+        .ztitle{font:700 24px Inter,Arial;fill:#e2e8f0}.zsub{font:500 12px Inter,Arial;fill:#94a3b8}.box{rx:18;stroke-width:1.4;filter:url(#glow2)}.label{font:700 15px Inter,Arial;fill:#f8fafc}.tiny{font:500 11px Inter,Arial;fill:#cbd5e1}.flow{stroke:#67e8f9;stroke-width:2;fill:none;marker-end:url(#arrow2);opacity:.72}.flow2{stroke:#fbbf24;stroke-width:2;fill:none;marker-end:url(#arrow2);opacity:.7;stroke-dasharray:8 5}.manual{stroke:#fb7185;stroke-width:2;fill:none;marker-end:url(#arrow2);opacity:.75;stroke-dasharray:4 4}.zone{fill:rgba(15,23,42,.22);stroke:rgba(148,163,184,.25);stroke-width:1.2;stroke-dasharray:10 6;rx:28}.pill{font:700 10px Inter,Arial;fill:#020617}.pillbg{rx:9;fill:#67e8f9;opacity:.9}
+      </style>
+      <rect x="20" y="20" width="1810" height="1140" class="zone"/>
+      <text x="50" y="62" class="ztitle">MDP3 Expanded Operational Blueprint</text><text x="50" y="86" class="zsub">Source modality is explicit: API, XML/RSS, HTML crawl, local DB, manual, or prototype.</text>
+
+      <rect x="45" y="115" width="310" height="875" class="zone"/><text x="65" y="145" class="ztitle">External / Manual Sources</text>
+      <g>
+        <rect x="70" y="170" width="250" height="54" class="box" fill="url(#sourceGrad)" stroke="#94a3b8"/><text x="88" y="192" class="label">PubMed / NCBI</text><text x="88" y="211" class="tiny">API + XML → publications/KOLs</text>
+        <rect x="70" y="238" width="250" height="54" class="box" fill="url(#sourceGrad)" stroke="#94a3b8"/><text x="88" y="260" class="label">ClinicalTrials.gov v2</text><text x="88" y="279" class="tiny">API JSON → trials/investigators</text>
+        <rect x="70" y="306" width="250" height="54" class="box" fill="url(#sourceGrad)" stroke="#94a3b8"/><text x="88" y="328" class="label">Company / IR Websites</text><text x="88" y="347" class="tiny">HTML crawl → BioCrawler leads</text>
+        <rect x="70" y="374" width="250" height="54" class="box" fill="url(#sourceGrad)" stroke="#94a3b8"/><text x="88" y="396" class="label">Google Sheets CRM</text><text x="88" y="415" class="tiny">API + manual review loop</text>
+        <rect x="70" y="442" width="250" height="54" class="box" fill="url(#sourceGrad)" stroke="#94a3b8"/><text x="88" y="464" class="label">SEC EDGAR / CIK Map</text><text x="88" y="483" class="tiny">API/JSON/filings → spine + 8-K</text>
+        <rect x="70" y="510" width="250" height="54" class="box" fill="url(#sourceGrad)" stroke="#94a3b8"/><text x="88" y="532" class="label">FDA / PDUFA Sources</text><text x="88" y="551" class="tiny">public data parse → catalysts</text>
+        <rect x="70" y="578" width="250" height="54" class="box" fill="url(#sourceGrad)" stroke="#94a3b8"/><text x="88" y="600" class="label">PR Wire Feeds</text><text x="88" y="619" class="tiny">RSS/XML with timeouts</text>
+        <rect x="70" y="646" width="250" height="54" class="box" fill="url(#sourceGrad)" stroke="#94a3b8"/><text x="88" y="668" class="label">Yahoo Finance</text><text x="88" y="687" class="tiny">ticker headline RSS/XML</text>
+        <rect x="70" y="714" width="250" height="54" class="box" fill="url(#sourceGrad)" stroke="#94a3b8"/><text x="88" y="736" class="label">Alpha Vantage</text><text x="88" y="755" class="tiny">listing CSV + sentiment API</text>
+        <rect x="70" y="782" width="250" height="54" class="box" fill="url(#sourceGrad)" stroke="#94a3b8"/><text x="88" y="804" class="label">Scholar / UMLS / Massive</text><text x="88" y="823" class="tiny">SerpApi + ontology API + prototype</text>
+        <rect x="70" y="850" width="250" height="54" class="box" fill="url(#sourceGrad)" stroke="#fb7185"/><text x="88" y="872" class="label">Substack / LinkedIn / X</text><text x="88" y="891" class="tiny">manual publish / future bot</text>
+      </g>
+
+      <rect x="420" y="115" width="330" height="875" class="zone"/><text x="440" y="145" class="ztitle">Meddash Engines</text>
+      <rect x="450" y="170" width="260" height="68" class="box" fill="url(#engineGrad)" stroke="#34d399"/><text x="470" y="194" class="label">01 KOL Data Engine</text><text x="470" y="214" class="tiny">extract_publications/db_ingestion</text>
+      <rect x="450" y="255" width="260" height="68" class="box" fill="url(#engineGrad)" stroke="#34d399"/><text x="470" y="279" class="label">KOL Disambiguation</text><text x="470" y="299" class="tiny">ORCID/score/manual queues</text>
+      <rect x="450" y="340" width="260" height="68" class="box" fill="url(#engineGrad)" stroke="#34d399"/><text x="470" y="364" class="label">02 CT Data Engine</text><text x="470" y="384" class="tiny">crawl/ingest/bridge/results</text>
+      <rect x="450" y="425" width="260" height="68" class="box" fill="url(#engineGrad)" stroke="#34d399"/><text x="470" y="449" class="label">03 BioCrawler GTM</text><text x="470" y="469" class="tiny">company crawl + sheet sync</text>
+      <rect x="450" y="510" width="260" height="68" class="box" fill="url(#productGrad)" stroke="#fbbf24"/><text x="470" y="534" class="label">04 KOL Brief Generator</text><text x="470" y="554" class="tiny">manual query → MD + JSON brief</text>
+      <rect x="450" y="595" width="260" height="68" class="box" fill="url(#productGrad)" stroke="#fbbf24"/><text x="470" y="619" class="label">05 TA Landscape</text><text x="470" y="639" class="tiny">cache → report/docx/charts</text>
+      <rect x="450" y="680" width="260" height="68" class="box" fill="url(#engineGrad)" stroke="#34d399"/><text x="470" y="704" class="label">08/09 Ontology + Scholar</text><text x="470" y="724" class="tiny">UMLS + SerpApi/manual URLs</text>
+      <rect x="450" y="765" width="260" height="68" class="box" fill="url(#engineGrad)" stroke="#34d399"/><text x="470" y="789" class="label">10 Centrality Engine</text><text x="470" y="809" class="tiny">graph score + duplicate penalty</text>
+
+      <rect x="815" y="115" width="330" height="875" class="zone"/><text x="835" y="145" class="ztitle">CQ Engines</text>
+      <rect x="845" y="170" width="260" height="68" class="box" fill="url(#cqGrad)" stroke="#22d3ee"/><text x="865" y="194" class="label">Ticker Spine</text><text x="865" y="214" class="tiny">AV listings + SEC CIK → tickers</text>
+      <rect x="845" y="255" width="260" height="68" class="box" fill="url(#cqGrad)" stroke="#22d3ee"/><text x="865" y="279" class="label">Yahoo RSS Link Ingest</text><text x="865" y="299" class="tiny">headline/url/source metadata</text>
+      <rect x="845" y="340" width="260" height="68" class="box" fill="url(#cqGrad)" stroke="#22d3ee"/><text x="865" y="364" class="label">SEC 8-K Monitor</text><text x="865" y="384" class="tiny">canonical ticker/CIK based</text>
+      <rect x="845" y="425" width="260" height="68" class="box" fill="url(#cqGrad)" stroke="#22d3ee"/><text x="865" y="449" class="label">FDA PDUFA Tracker</text><text x="865" y="469" class="tiny">verified aliases / company names</text>
+      <rect x="845" y="510" width="260" height="68" class="box" fill="url(#cqGrad)" stroke="#22d3ee"/><text x="865" y="534" class="label">PR Wire Aggregator</text><text x="865" y="554" class="tiny">RSS/XML timeout guarded</text>
+      <rect x="845" y="595" width="260" height="68" class="box" fill="url(#cqGrad)" stroke="#fbbf24"/><text x="865" y="619" class="label">AV + Massive Prototypes</text><text x="865" y="639" class="tiny">sentiment + price bars later</text>
+      <rect x="845" y="680" width="260" height="68" class="box" fill="url(#cqGrad)" stroke="#22d3ee"/><text x="865" y="704" class="label">CQ Runner</text><text x="865" y="724" class="tiny">cq_pipeline_runner.py detect</text>
+      <rect x="845" y="765" width="260" height="68" class="box" fill="url(#cqGrad)" stroke="#fb7185"/><text x="865" y="789" class="label">Old Fuzzy Ticker Guard</text><text x="865" y="809" class="tiny">enrich_tickers.py disabled stub</text>
+
+      <rect x="1210" y="115" width="290" height="875" class="zone"/><text x="1230" y="145" class="ztitle">Stores + Dedup</text>
+      <rect x="1240" y="170" width="225" height="72" class="box" fill="url(#storeGrad)" stroke="#a78bfa"/><text x="1260" y="194" class="label">Supabase</text><text x="1260" y="214" class="tiny">kols/trials/leads/tickers/cq</text>
+      <rect x="1240" y="260" width="225" height="72" class="box" fill="url(#storeGrad)" stroke="#a78bfa"/><text x="1260" y="284" class="label">Local SQLite DBs</text><text x="1260" y="304" class="tiny">KOL/CT/BioCrawler state</text>
+      <rect x="1240" y="350" width="225" height="72" class="box" fill="url(#storeGrad)" stroke="#a78bfa"/><text x="1260" y="374" class="label">Product Folders</text><text x="1260" y="394" class="tiny">KOL briefs / TA landscapes</text>
+      <rect x="1240" y="440" width="225" height="72" class="box" fill="url(#storeGrad)" stroke="#a78bfa"/><text x="1260" y="464" class="label">Obsidian Vault</text><text x="1260" y="484" class="tiny">newsletter/research/dedup log</text>
+      <rect x="1240" y="530" width="225" height="72" class="box" fill="url(#storeGrad)" stroke="#fb7185"/><text x="1260" y="554" class="label">Dedup Gates</text><text x="1260" y="574" class="tiny">KOL, ticker, CQ posted events</text>
+      <rect x="1240" y="620" width="225" height="72" class="box" fill="url(#storeGrad)" stroke="#a78bfa"/><text x="1260" y="644" class="label">n8n DB</text><text x="1260" y="664" class="tiny">workflow topology / executions</text>
+      <rect x="1240" y="710" width="225" height="72" class="box" fill="url(#storeGrad)" stroke="#a78bfa"/><text x="1260" y="734" class="label">Paperclip Store</text><text x="1260" y="754" class="tiny">issues/agents/comments</text>
+
+      <rect x="1560" y="115" width="245" height="875" class="zone"/><text x="1580" y="145" class="ztitle">Control + Output</text>
+      <rect x="1585" y="170" width="190" height="64" class="box" fill="#172554" stroke="#60a5fa"/><text x="1605" y="194" class="label">n8n</text><text x="1605" y="213" class="tiny">Schedule + HTTP only</text>
+      <rect x="1585" y="250" width="190" height="64" class="box" fill="#172554" stroke="#60a5fa"/><text x="1605" y="274" class="label">Ops API 8765</text><text x="1605" y="293" class="tiny">execution bridge</text>
+      <rect x="1585" y="330" width="190" height="64" class="box" fill="#172554" stroke="#60a5fa"/><text x="1605" y="354" class="label">Paperclip 3100</text><text x="1605" y="373" class="tiny">agents + wakeups</text>
+      <rect x="1585" y="410" width="190" height="64" class="box" fill="#172554" stroke="#60a5fa"/><text x="1605" y="434" class="label">Telegram</text><text x="1605" y="453" class="tiny">centralized alerts</text>
+      <rect x="1585" y="490" width="190" height="64" class="box" fill="#172554" stroke="#22d3ee"/><text x="1605" y="514" class="label">Streamlit 5090</text><text x="1605" y="533" class="tiny">operational cockpit</text>
+      <rect x="1585" y="570" width="190" height="64" class="box" fill="#431407" stroke="#fbbf24"/><text x="1605" y="594" class="label">CQ Daily Brief</text><text x="1605" y="613" class="tiny">Obsidian draft</text>
+      <rect x="1585" y="650" width="190" height="64" class="box" fill="#431407" stroke="#fbbf24"/><text x="1605" y="674" class="label">KOL/TA Products</text><text x="1605" y="693" class="tiny">client-ready assets</text>
+      <rect x="1585" y="730" width="190" height="64" class="box" fill="#4c0519" stroke="#fb7185"/><text x="1605" y="754" class="label">Manual Publish</text><text x="1605" y="773" class="tiny">Substack + LinkedIn</text>
+
+      <path class="flow" d="M320 197 C375 197 390 204 450 204"/><path class="flow" d="M320 265 C375 265 390 374 450 374"/><path class="flow" d="M320 333 C375 333 390 459 450 459"/><path class="flow2" d="M320 401 C375 401 390 459 450 459"/>
+      <path class="flow" d="M710 204 C760 204 790 204 845 204"/><path class="flow" d="M320 469 C620 469 690 204 845 204"/><path class="flow" d="M320 537 C620 537 760 459 845 459"/><path class="flow" d="M320 605 C620 605 760 544 845 544"/><path class="flow" d="M320 673 C620 673 760 289 845 289"/><path class="flow" d="M320 741 C620 741 760 204 845 204"/>
+      <path class="flow" d="M710 204 C930 145 1080 180 1240 206"/><path class="flow" d="M710 374 C930 310 1080 285 1240 296"/><path class="flow" d="M710 459 C930 350 1080 295 1240 296"/><path class="flow" d="M710 544 C960 530 1120 365 1240 386"/><path class="flow" d="M1105 204 C1140 204 1180 204 1240 206"/><path class="flow" d="M1105 289 C1140 300 1180 220 1240 206"/><path class="flow" d="M1105 374 C1140 384 1180 210 1240 206"/><path class="flow" d="M1105 459 C1140 464 1180 215 1240 206"/><path class="flow" d="M1105 544 C1140 554 1180 230 1240 206"/>
+      <path class="flow" d="M1465 206 C1500 206 1535 202 1585 202"/><path class="flow" d="M1465 296 C1500 296 1535 522 1585 522"/><path class="flow" d="M1465 386 C1500 386 1535 682 1585 682"/><path class="flow" d="M1465 476 C1500 476 1535 602 1585 602"/><path class="manual" d="M1775 602 C1800 630 1800 735 1775 762"/>
+      <path class="flow2" d="M1585 202 C1525 200 1510 282 1585 282"/><path class="flow2" d="M1775 282 C1805 282 1805 202 1775 202"/><path class="flow" d="M1775 282 C1810 282 1810 360 1775 362"/><path class="flow" d="M1775 362 C1810 390 1810 442 1775 442"/>
+    </svg>
+  </div>
+
+  <div class="grid three" style="margin-top:18px;">
+    <div class="card"><h3>Data source modality</h3><p>API: PubMed, ClinicalTrials.gov, SEC, Alpha Vantage, SerpApi, UMLS, Google Sheets, Paperclip, Telegram. XML/RSS: Yahoo Finance, PR feeds. HTML crawl: company/IR websites. Manual: Scholar URL repair, KOL brief queries, Substack/LinkedIn publication.</p></div>
+    <div class="card"><h3>Product lanes now explicit</h3><p>KOL brief generation (`generate_kol_brief.py`) reads `ct_trials.db` + `meddash_kols.db`, scores trial activity/publication signal/indication specificity, then writes Markdown + JSON. TA Landscape reads KOL/CT/BioCrawler data into reusable reports/charts.</p></div>
+    <div class="card"><h3>Dedup lanes now explicit</h3><p>KOL disambiguator, sandbox review, Scholar 4-tier matching, centrality reliability penalty, ticker spine reversal, disabled fuzzy ticker guard, CQ posted-events log, source URL uniqueness, and Paperclip issue history are all named gates.</p></div>
+  </div>
+
+  <div class="panel" style="margin-top:18px; overflow:auto;">
+    <h3>Complete Data Source Matrix</h3>
+    <table class="matrix"><thead><tr><th>Source</th><th>Modality</th><th>Consumer</th><th>Persistence</th><th>Note</th></tr></thead><tbody>
+      <tr><td>PubMed / NCBI</td><td>API + XML</td><td>KOL Data Engine</td><td>meddash_kols.db / Supabase KOL tables</td><td>Publication/KOL root.</td></tr>
+      <tr><td>ClinicalTrials.gov v2</td><td>API JSON</td><td>CT Data Engine</td><td>ct_trials.db / Supabase trials</td><td>Trial, sponsor, investigator, eligibility, results.</td></tr>
+      <tr><td>Company / IR Websites</td><td>HTML crawl</td><td>BioCrawler</td><td>biocrawler_leads.db / biotech_leads</td><td>Lead intelligence, not canonical ticker identity.</td></tr>
+      <tr><td>Google Sheets CRM</td><td>API + manual</td><td>push/pull sheets scripts</td><td>Sheet + BioCrawler DB</td><td>GTM review loop.</td></tr>
+      <tr><td>SEC EDGAR / CIK</td><td>API/JSON/filing text</td><td>Ticker spine + SEC 8-K monitor</td><td>biotech_tickers / cq_regulatory_catalysts</td><td>Canonical CIK/ticker and catalyst source.</td></tr>
+      <tr><td>FDA/PDUFA</td><td>Public data parse</td><td>FDA tracker</td><td>cq_regulatory_catalysts</td><td>Mapped via ticker spine aliases.</td></tr>
+      <tr><td>PR feeds</td><td>RSS/XML</td><td>PR Wire aggregator</td><td>cq_regulatory_catalysts</td><td>Timeout guarded with bad HTML feeds removed.</td></tr>
+      <tr><td>Yahoo Finance</td><td>RSS/XML</td><td>Yahoo ticker-news pull</td><td>cq_market_sentiment / cq_market_events</td><td>Metadata/links only.</td></tr>
+      <tr><td>Alpha Vantage</td><td>Listing CSV + API</td><td>Ticker spine / sentiment prototype</td><td>biotech_tickers / intended sentiment</td><td>Current canonical listing source.</td></tr>
+      <tr><td>Massive</td><td>API prototype</td><td>phase4 quant tracker</td><td>cq_price_bars future</td><td>Table-ready, not fully promoted.</td></tr>
+      <tr><td>Google Scholar / SerpApi</td><td>API + manual URLs</td><td>Scholar engine</td><td>kol_scholar_metrics</td><td>Manual/final KOL repair lane.</td></tr>
+      <tr><td>UMLS</td><td>API</td><td>MDM ontology engine</td><td>disease ontology layer</td><td>Terminology standardization.</td></tr>
+      <tr><td>Obsidian vault</td><td>Local markdown</td><td>Paperclip + Alfred</td><td>drafts/logs/architecture</td><td>Source of truth for newsletter and dedup log.</td></tr>
+      <tr><td>Substack / LinkedIn</td><td>Manual</td><td>Dr. Don</td><td>external posts</td><td>Human approval remains required.</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="grid two" style="margin-top:18px;">
+    <div class="panel"><h3>Manual KOL Brief Generator</h3><ul><li>Path: `04_Product_KOL_Briefs/generate_kol_brief.py`</li><li>Inputs: `ct_trials.db`, `meddash_kols.db`, CT↔KOL bridge, journal metrics, biomarkers, sponsors, phases.</li><li>Scoring: 50% trial activity, 30% publication signal, 20% indication specificity.</li><li>Outputs: Markdown + JSON in `04_Product_KOL_Briefs/kol_briefs/`.</li><li>Examples: KRAS G12C lung cancer brief and JSON already present.</li></ul></div>
+    <div class="panel"><h3>Dashboard / Front End</h3><ul><li>Current cockpit: `CTO/Meddash-CQ_Dashboard/app.py` on port 5090.</li><li>Widgets: Factory Floor, Pulse, Pipeline Health, Meddash Panel, CQ Panel, KOL Ingest, Operations, CRM placeholder.</li><li>Reads: Supabase, local SQLite DBs, product folders.</li><li>Phase 2 lineage: Next.js 15 UI + `api_server.py` FastAPI sidecar with sandbox/Scholar/manual lanes.</li></ul></div>
+  </div>
+
+  <div class="panel" style="margin-top:18px;">
+    <h3>CQ Free Newsletter Full Path</h3>
+    <ol class="timeline"><li>n8n schedule/manual trigger fires.</li><li>n8n calls Ops API `/cq/ticker-spine`.</li><li>n8n calls Ops API `/cq/detect`.</li><li>`cq_pipeline_runner.py` runs ticker spine, Yahoo RSS, SEC 8-K, FDA/PDUFA, PR Wire.</li><li>Supabase receives ticker/news/catalyst rows.</li><li>n8n creates CQ-Selector and CQ-Monitor Paperclip issues with full `assigneeAgentId`.</li><li>n8n explicitly wakes CQ-Selector and CQ-Monitor.</li><li>CQ-Selector checks Supabase + `posted-events-log.md` dedup ledger.</li><li>Selector/research path writes daily draft to `projects/clinical-quant/newsletter/YYYY-MM-DD-daily-brief.md`.</li><li>Ops API/Telegram reports latest run/draft status.</li><li>Dr. Don manually reviews and publishes to Substack/LinkedIn.</li></ol>
+  </div>
+
+  <div class="panel" style="margin-top:18px;">
+    <h3>Deduplication and Identity Gates</h3>
+    <div class="grid three"><div class="card"><h4>KOL dedup</h4><p>ORCID and score threshold in `kol_disambiguator.py`; uncertain pairs to sandbox; deep queue for ambiguous cases.</p></div><div class="card"><h4>Ticker dedup</h4><p>Market/security source → `biotech_tickers`; exact CIK/name matching; fuzzy path disabled and stubbed.</p></div><div class="card"><h4>CQ newsletter dedup</h4><p>Append-only `posted-events-log.md`, Paperclip issue history, source URL uniqueness, Selector novelty check.</p></div></div>
+  </div>
+</section>
+
+</body></html>

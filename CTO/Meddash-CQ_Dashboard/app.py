@@ -18,6 +18,8 @@ import streamlit as st
 import importlib
 import os
 import sys
+from datetime import datetime
+from config import REFRESH_SECONDS
 
 # ── Page config (must be first) ──────────────────────────────────────────────
 st.set_page_config(
@@ -31,6 +33,16 @@ st.set_page_config(
 css_path = os.path.join(os.path.dirname(__file__), "styles.css")
 with open(css_path, "r", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+# ── Browser auto-refresh guard ───────────────────────────────────────────────
+# REFRESH_SECONDS existed in config.py but was previously not wired into the app,
+# so a live browser tab could sit on stale Streamlit state forever. Keep this
+# zero-dependency: importing streamlit_autorefresh from the Windows-mounted venv
+# was observed to hang startup under WSL/NTFS.
+st.markdown(f'<meta http-equiv="refresh" content="{REFRESH_SECONDS}">', unsafe_allow_html=True)
+_refresh_mode = "browser_meta_refresh"
+
+_rendered_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # ── Route map ────────────────────────────────────────────────────────────────
 PAGES = {
@@ -65,4 +77,6 @@ except Exception as e:
 # ── Footer ───────────────────────────────────────────────────────────────────
 st.sidebar.markdown("---")
 st.sidebar.caption("Built by Alfred Chief for Dr. Don")
-st.sidebar.caption("v1.0 — 2026-04-24")
+st.sidebar.caption(f"Last render: {_rendered_at}")
+st.sidebar.caption(f"Auto-refresh: {REFRESH_SECONDS}s ({_refresh_mode})")
+st.sidebar.caption("v1.1 — 2026-04-29")
