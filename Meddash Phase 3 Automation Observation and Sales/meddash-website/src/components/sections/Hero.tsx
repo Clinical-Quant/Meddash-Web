@@ -20,8 +20,8 @@ export default function Hero() {
         <h1 className="text-4xl md:text-6xl font-semibold leading-tight text-white">
           Therapeutic Intelligence for Biotech Teams
         </h1>
-        <p className="mt-5 text-base md:text-lg text-slate-300 max-w-2xl">
-          KOL intelligence, biotech catalyst tracking, and clinical-trial search — unified into one high-signal decision layer.
+        <p className="mt-5 text-base md:text-lg text-slate-300 max-w-3xl">
+          Decision-ready, multidimensional KOL and therapeutic-area intelligence for early- and mid-stage biotech teams — cutting KOL mapping time and cost by up to 80%, with outreach-capable, medical-affairs-ready brief integration. Our data models run intelligence scoping in real time, with dynamic scoring and proprietary algorithms to deliver actionable intelligence for today and predictive intelligence for tomorrow.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <a
