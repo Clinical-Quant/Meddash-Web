@@ -30,7 +30,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 @keyframes hero-graph-drift {
@@ -39,22 +39,59 @@ body {
   100% { transform: translate3d(0, 0, 0) scale(1); }
 }
 
-        @keyframes hero-scanline {
-          0% { transform: translateY(-115%); }
-          100% { transform: translateY(115%); }
-        }
+@keyframes hero-eeg-flow {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -26; }
+}
+
+@keyframes hero-eeg-node-pulse {
+  0%, 100% { opacity: 0.42; }
+  50% { opacity: 0.82; }
+}
+
+@keyframes hero-scanline {
+  0% { transform: translateY(-115%); }
+  100% { transform: translateY(115%); }
+}
+
+@keyframes hero-node-glow {
+  0%, 100% {
+    opacity: 0.08;
+    filter: drop-shadow(0 0 0 rgba(191, 226, 255, 0));
+  }
+  50% {
+    opacity: 0.56;
+    filter: drop-shadow(0 0 4px rgba(191, 226, 255, 0.75));
+  }
+}
 
 .hero-graph-drift {
   animation: hero-graph-drift 26s ease-in-out infinite;
+}
+
+.hero-eeg-flow {
+  stroke-dasharray: 3 5;
+  animation: hero-eeg-flow 8s linear infinite;
+}
+
+.hero-eeg-node-pulse {
+  animation: hero-eeg-node-pulse 3.2s ease-in-out infinite;
 }
 
 .hero-scanline {
   animation: hero-scanline 11s linear infinite;
 }
 
+.hero-node-glow {
+  animation: hero-node-glow 2.8s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-graph-drift,
-  .hero-scanline {
+  .hero-eeg-flow,
+  .hero-eeg-node-pulse,
+  .hero-scanline,
+  .hero-node-glow {
     animation: none !important;
   }
 }

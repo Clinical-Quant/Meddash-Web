@@ -4,6 +4,7 @@ export default function Header() {
       <nav className="px-6 md:px-10 py-4 flex items-center justify-between">
         <a href="#" className="font-semibold text-white">Meddash.ai</a>
         <div className="hidden md:flex items-center gap-6 text-sm text-slate-300">
+          <a href="https://lite.meddash.ai" target="_blank" rel="noopener noreferrer" className="rounded-full bg-meddash-emerald text-black px-3 py-1 font-semibold hover:brightness-95">Meddash Lite $19</a>
           <a href="#features" className="hover:text-meddash-cyan">Features</a>
           <a href="#calendar" className="hover:text-meddash-cyan">Calendar</a>
           <a href="#enterprise" className="hover:text-meddash-cyan">Enterprise</a>

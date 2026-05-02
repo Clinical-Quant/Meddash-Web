@@ -48,7 +48,7 @@ DATA = BASE / "06_Shared_Datastores"
 MEDDASH_RUNNER = BASE / "07_DevOps_Observability" / "meddash_pipeline_runner.py"
 COMMAND_POLLER = BASE / "07_DevOps_Observability" / "meddash_command_poll_once.py"
 
-CQ_BASE = Path("/mnt/c/Users/email/.gemini/antigravity/CTO/CQ_Team")
+CQ_BASE = Path("/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend")
 CQ_RUNNER = CQ_BASE / "scripts" / "cq_pipeline_runner.py"
 CQ_REPORT_DIR = Path("/mnt/c/Users/email/.gemini/antigravity/CEO Notes/CQ Daily Update")
 
