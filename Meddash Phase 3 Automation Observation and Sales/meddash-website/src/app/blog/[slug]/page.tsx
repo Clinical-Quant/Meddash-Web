@@ -50,8 +50,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <p className="text-slate-300 mt-2">
             Request a Meddash brief to receive decision-ready KOL and catalyst intelligence for your therapeutic area.
           </p>
-          <a href="/#lead" className="inline-block mt-4 rounded-lg bg-meddash-cyan text-black px-4 py-2 font-semibold">
+          <a href="/#lead" className="inline-block mt-4 rounded-lg bg-meddash-cyan text-black px-4 py-2 font-semibold mr-3">
             Request Brief
+          </a>
+          <a href="https://madebydoc.substack.com/s/meddash" target="_blank" rel="noopener noreferrer" className="inline-block mt-4 rounded-lg border border-meddash-cyan/50 text-meddash-cyan px-4 py-2 font-semibold">
+            Subscribe to Meddash Substack
           </a>
         </div>
       </article>

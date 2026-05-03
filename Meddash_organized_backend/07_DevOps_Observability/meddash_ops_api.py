@@ -17,6 +17,13 @@ Endpoints:
   POST /cq/ticker-spine
   POST /cq/detect
   POST /cq/latest-report
+  POST /cq/automation/select          — select candidates for verification
+  POST /cq/automation/verify          — verify selected candidates
+  POST /cq/automation/compose         — compose newsletter/tweet/approval drafts
+  POST /cq/automation/approval-status — approve/reject/revise content
+  POST /cq/automation/export-approved — export approved content
+  GET  /cq/automation/latest-approval-package — read latest approval package
+  GET  /cq/automation/status          — read automation status view
 """
 
 from __future__ import annotations
@@ -37,7 +44,7 @@ from typing import Any
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("MEDDASH_OPS_API_PORT", "8765"))
 
-BOT_TOKEN = "8515229822:AAGgPRuVkTSiccltsKyhsO1TqvitYSr6Geo"
+BOT_TOKEN = "8672876638:AAEl__BSvmiMs6-1hlaNscSb0AkHoMo3ITg"  # CQ-Alerts bot
 CHAT_ID = "6253013213"
 TG_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 OFFSET_FILE = Path("/tmp/meddash_telegram_offset.txt")
@@ -51,6 +58,8 @@ COMMAND_POLLER = BASE / "07_DevOps_Observability" / "meddash_command_poll_once.p
 CQ_BASE = Path("/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend")
 CQ_RUNNER = CQ_BASE / "scripts" / "cq_pipeline_runner.py"
 CQ_REPORT_DIR = Path("/mnt/c/Users/email/.gemini/antigravity/CEO Notes/CQ Daily Update")
+CQ_AUTO_SCRIPTS = CQ_BASE / "scripts" / "cq_automation"
+CQ_APPROVAL_DIR = Path("/mnt/c/Users/email/.gemini/antigravity/CTO/CQ_Team/CQ_Automation/approval-packages")
 
 
 def now() -> str:
@@ -182,12 +191,27 @@ class Handler(BaseHTTPRequestHandler):
             print(f"Client disconnected before response was written: {self.path}")
         return None
 
+    def _read_body(self) -> dict[str, Any]:
+        """Read and parse JSON body from POST request."""
+        length = int(self.headers.get("Content-Length", 0))
+        if length == 0:
+            return {}
+        raw = self.rfile.read(length)
+        try:
+            return json.loads(raw.decode("utf-8"))
+        except Exception:
+            return {}
+
     def log_message(self, fmt, *args):
         sys.stderr.write("%s - %s\n" % (now(), fmt % args))
 
     def do_GET(self):
         if self.path == "/health":
             return self._json({"status": "ok", "service": "meddash_ops_api", "timestamp": now()})
+        if self.path == "/cq/automation/status":
+            return self._handle_cq_automation_status()
+        if self.path == "/cq/automation/latest-approval-package":
+            return self._handle_cq_latest_approval_package()
         return self._json({"status": "not_found", "path": self.path}, 404)
 
     def do_POST(self):
@@ -222,9 +246,137 @@ class Handler(BaseHTTPRequestHandler):
                 tg = send_telegram(cq_latest_text())
                 r["telegram"] = tg
                 return self._json(r)
+            # --- SWIP8 CQ Automation endpoints ---
+            if self.path == "/cq/automation/select":
+                return self._handle_cq_automation_select()
+            if self.path == "/cq/automation/verify":
+                return self._handle_cq_automation_verify()
+            if self.path == "/cq/automation/compose":
+                return self._handle_cq_automation_compose()
+            if self.path == "/cq/automation/approval-status":
+                return self._handle_cq_approval_status()
+            if self.path == "/cq/automation/export-approved":
+                return self._handle_cq_export_approved()
             return self._json({"status": "not_found", "path": self.path}, 404)
         except Exception as e:
             return self._json({"status": "exception", "error": str(e), "traceback": traceback.format_exc()}, 500)
+
+    # --- SWIP8 CQ Automation handler methods ---
+
+    def _handle_cq_automation_select(self) -> None:
+        """POST /cq/automation/select — run candidate selector."""
+        body = self._read_body()
+        limit = body.get("limit", 10)
+        dry_run = body.get("dry_run", False)
+        cmd = ["python3", str(CQ_AUTO_SCRIPTS / "cq_candidate_selector.py"), "--limit", str(limit)]
+        if dry_run:
+            cmd.append("--dry-run")
+        result = run_cmd(cmd, timeout=120, cwd=str(CQ_BASE))
+        send_telegram(f"📋 CQ candidate selection finished via Ops API\nSelected: {result.get('stdout', '')[:200]}")
+        self._json(result)
+
+    def _handle_cq_automation_verify(self) -> None:
+        """POST /cq/automation/verify — run independent verifier."""
+        body = self._read_body()
+        limit = body.get("limit", 10)
+        dry_run = body.get("dry_run", False)
+        cmd = ["python3", str(CQ_AUTO_SCRIPTS / "cq_independent_verifier.py"), "--limit", str(limit)]
+        if dry_run:
+            cmd.append("--dry-run")
+        result = run_cmd(cmd, timeout=180, cwd=str(CQ_BASE))
+        send_telegram(f"🔍 CQ verification finished via Ops API\nStatus: {result.get('status', '?')}")
+        self._json(result)
+
+    def _handle_cq_automation_compose(self) -> None:
+        """POST /cq/automation/compose — run content composer."""
+        body = self._read_body()
+        limit = body.get("limit", 10)
+        dry_run = body.get("dry_run", False)
+        cmd = ["python3", str(CQ_AUTO_SCRIPTS / "cq_content_composer.py"), "--limit", str(limit)]
+        if dry_run:
+            cmd.append("--dry-run")
+        result = run_cmd(cmd, timeout=120, cwd=str(CQ_BASE))
+        send_telegram(f"✍️ CQ content composition finished via Ops API\nStatus: {result.get('status', '?')}")
+        self._json(result)
+
+    def _handle_cq_approval_status(self) -> None:
+        """POST /cq/automation/approval-status — approve/reject/revise content."""
+        body = self._read_body()
+        action = body.get("action", "approve")
+        content_id = body.get("content_id")
+        candidate_id = body.get("candidate_id")
+        reason = body.get("reason", "")
+        cmd = ["python3", str(CQ_AUTO_SCRIPTS / "cq_approval_updater.py"), action]
+        if content_id:
+            cmd.extend(["--content-id", str(content_id)])
+        if candidate_id:
+            cmd.extend(["--candidate-id", str(candidate_id)])
+        if reason:
+            cmd.extend(["--reason", reason])
+        result = run_cmd(cmd, timeout=60, cwd=str(CQ_BASE))
+        self._json(result)
+
+    def _handle_cq_export_approved(self) -> None:
+        """POST /cq/automation/export-approved — export approved content."""
+        body = self._read_body()
+        limit = body.get("limit", 20)
+        dry_run = body.get("dry_run", False)
+        cmd = ["python3", str(CQ_AUTO_SCRIPTS / "cq_publish_exporter.py"), "--limit", str(limit)]
+        if dry_run:
+            cmd.append("--dry-run")
+        result = run_cmd(cmd, timeout=60, cwd=str(CQ_BASE))
+        self._json(result)
+
+    def _handle_cq_latest_approval_package(self) -> None:
+        """GET /cq/automation/latest-approval-package — read latest approval package markdown."""
+        CQ_APPROVAL_DIR.mkdir(parents=True, exist_ok=True)
+        files = sorted(CQ_APPROVAL_DIR.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if not files:
+            self._json({"status": "missing", "message": "No approval packages found"})
+            return
+        p = files[0]
+        text = p.read_text(encoding="utf-8", errors="replace")
+        self._json({
+            "status": "ok",
+            "path": str(p),
+            "filename": p.name,
+            "mtime": datetime.fromtimestamp(p.stat().st_mtime).isoformat(),
+            "content": text,
+        })
+
+    def _handle_cq_automation_status(self) -> None:
+        """GET /cq/automation/status — read cq_automation_status view from Supabase."""
+        try:
+            import psycopg2
+            import psycopg2.extras
+            env_raw = (Path("/mnt/c/Users/email/.gemini/antigravity/Meddash_organized_backend/.env")).read_text(encoding="utf-8", errors="ignore")
+            uri = None
+            for line in env_raw.splitlines():
+                line = line.strip()
+                if line.startswith("#") or "=" not in line:
+                    continue
+                key, val = line.split("=", 1)
+                key = key.strip()
+                val = val.strip().strip('"').strip("'")
+                if key in ("SUPABASE_URI", "SUPABASE_DB_URL", "DATABASE_URL") and val:
+                    uri = val
+                    break
+            if not uri:
+                self._json({"status": "error", "message": "No SUPABASE_URI found in .env"})
+                return
+            conn = psycopg2.connect(uri)
+            conn.autocommit = True
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute("SELECT * FROM public.cq_automation_status")
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+            if row:
+                self._json({"status": "ok", "data": dict(row)})
+            else:
+                self._json({"status": "ok", "data": {}})
+        except Exception as e:
+            self._json({"status": "error", "message": str(e)}, 500)
 
 
 if __name__ == "__main__":
