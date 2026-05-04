@@ -29,11 +29,15 @@ TABLES = [
 
 
 @st.cache_data(ttl=3600)
-def load_table(table_name: str) -> pd.DataFrame:
-    """Cached Supabase pull — cleared on manual sync. Uses raw REST, not st.connection."""
+def load_table(table_name: str, sync_nonce: int = 0) -> pd.DataFrame:
+    """Cached Supabase pull — cache key includes sync_nonce so manual sync always refreshes."""
     import urllib.request, json
     try:
+        # Prefer newest rows first when timestamp exists
         url = f"{SUPABASE_URL}/rest/v1/{table_name}?select=*"
+        if table_name in {"cq_selected_candidates", "cq_research_confirmations", "cq_content_queue", "cq_source_artifacts", "cq_catalysts", "cq_insider_trades"}:
+            url += "&order=created_at.desc.nullslast"
+
         headers = {
             "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
@@ -48,26 +52,31 @@ def load_table(table_name: str) -> pd.DataFrame:
 
 def _render_sync_panel():
     """Manual sync button + last sync time."""
+    if "cq_sync_nonce" not in st.session_state:
+        st.session_state["cq_sync_nonce"] = 0
+
     col1, col2 = st.columns([1, 3])
     with col1:
         if st.button("🔄 Force Synchronize", type="primary", use_container_width=True):
             st.cache_data.clear()
+            st.session_state["cq_sync_nonce"] += 1
             st.session_state["cq_last_sync"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
             st.rerun()
     with col2:
         last = st.session_state.get("cq_last_sync", "Never")
-        st.caption(f"Last sync: {last} | Tables cached 1 hour | Sync once per weekday to preserve Supabase quota")
+        st.caption(f"Last sync: {last} | Sync version: {st.session_state['cq_sync_nonce']} | Tables cached 1 hour | Sync once per weekday to preserve Supabase quota")
 
 
 def _render_table_tab(table_name: str):
     """Single table view with editable grid."""
     st.subheader(f"📊 {table_name}")
-    df = load_table(table_name)
+    sync_nonce = st.session_state.get("cq_sync_nonce", 0)
+    df = load_table(table_name, sync_nonce)
     if "error" in df.columns:
         st.warning(f"Could not load {table_name}: {df.iloc[0]['error']}")
         return
     st.caption(f"{len(df)} rows")
-    st.data_editor(df, use_container_width=True, num_rows="dynamic", key=f"editor_{table_name}")
+    st.data_editor(df, use_container_width=True, num_rows="dynamic", key=f"editor_{table_name}_{sync_nonce}")
 
 
 def _render_charts():
@@ -75,7 +84,8 @@ def _render_charts():
     st.subheader("📈 Analytics Charts")
     st.caption("Charts load after manual data sync.")
 
-    df = load_table("cq_selected_candidates")
+    sync_nonce = st.session_state.get("cq_sync_nonce", 0)
+    df = load_table("cq_selected_candidates", sync_nonce)
     if "error" in df.columns or len(df) == 0:
         st.info("No data loaded yet. Click 'Force Synchronize' to pull tables, then charts will appear here.")
         return
