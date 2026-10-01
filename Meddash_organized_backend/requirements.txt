@@ -5,3 +5,5 @@ asyncpg
 python-dotenv
 pandas
 sqlalchemy
+biopython
+requests
