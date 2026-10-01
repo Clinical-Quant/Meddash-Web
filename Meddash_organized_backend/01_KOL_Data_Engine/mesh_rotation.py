@@ -1,16 +1,30 @@
 """
 mesh_rotation.py — MeSH Category Rotation for Tier 2 KOL Discovery
 =====================================================================
-Implements weekly rotation through MeSH top-level disease categories
+Implements weekly rotation through focused PubMed query strings
 to systematically expand KOL universe beyond BioCrawler-driven targets.
 
-12-week cycle. After 3 cycles (36 weeks), every major TA has been
-covered 3 times with fresh publications.
+v2.0 — Aesthetic Medicine Pivot (2026-07-08)
+    - Parked 6 original disease categories (sufficient Tier 1 coverage from
+      BioCrawler leads for oncology, hematology, etc.)
+    - Replaced with 8 aesthetic medicine query strings targeting LinkedIn
+      content marketing for the aesthetics vertical.
+    - 8-week rotation cycle. Each query targets a specific aesthetic
+      procedure/topic with proven PubMed volume.
+
+Parked categories (still in Tier 1 via BioCrawler biotech_leads):
+    Neoplasms (C04), Musculoskeletal Diseases (C05),
+    Respiratory Tract Diseases (C08), Nervous System Diseases (C10),
+    Cardiovascular Diseases (C14), Digestive System Diseases (C06)
+
+Active rotation: Aesthetic Medicine queries
+    See AESTHETIC_ROTATION below.
 
 Usage:
     from mesh_rotation import get_rotation_target, get_rotation_report
 
 v1.0 — MDP3-SWIP1
+v2.0 — 2026-07-08 Aesthetic pivot
 """
 
 import json
@@ -23,19 +37,89 @@ from typing import Optional
 
 # ── Configuration ─────────────────────────────────────────────────────────
 
-MESH_ROTATION = [
+# ── Parked Categories (v1.0) ────────────────────────────────────────────────
+# These 6 disease categories are parked because BioCrawler Tier 1 leads
+# already provide comprehensive coverage (300+ oncology/hematology indications).
+# Kept as reference; can be reactivated if needed.
+PARKED_MESH_ROTATION = [
     {"category": "Neoplasms",                       "mesh_code": "C04", "ta": "Oncology"},
     {"category": "Musculoskeletal Diseases",         "mesh_code": "C05", "ta": "Rheumatology/Orthopedics"},
     {"category": "Respiratory Tract Diseases",       "mesh_code": "C08", "ta": "Pulmonology"},
     {"category": "Nervous System Diseases",          "mesh_code": "C10", "ta": "Neurology"},
     {"category": "Cardiovascular Diseases",          "mesh_code": "C14", "ta": "Cardiology"},
     {"category": "Digestive System Diseases",        "mesh_code": "C06", "ta": "GI/Hepatology"},
-    {"category": "Immune System Diseases",           "mesh_code": "C20", "ta": "Immunology/Autoimmune"},
-    {"category": "Eye Diseases",                     "mesh_code": "C11", "ta": "Ophthalmology"},
-    {"category": "Skin and Connective Tissue Diseases", "mesh_code": "C17", "ta": "Dermatology"},
-    {"category": "Endocrine System Diseases",        "mesh_code": "C19", "ta": "Endocrinology"},
-    {"category": "Hemic and Lymphatic Diseases",     "mesh_code": "C15", "ta": "Hematology"},
-    {"category": "Stomatognathic Diseases",          "mesh_code": "C07", "ta": "Dental/Oral"},
+]
+
+# ── Active Rotation: Aesthetic Medicine (v2.0) ──────────────────────────────
+# 8-week rotation cycle. Each entry is a focused PubMed query string that
+# targets a specific aesthetic medicine vertical for KOL discovery.
+# These feed into the "Clinical Simplified" LinkedIn content pipeline.
+# Article counts verified 2026-07-08 via PubMed E-utilities.
+MESH_ROTATION = [
+    {
+        "category": "Aesthetic Medicine",
+        "mesh_code": "AESTH-01",
+        "ta": "Aesthetics (broad)",
+        "pubmed_query": '"Aesthetic Medicine" AND medline[sb]',
+        "ctgov_queries": ["Botulinum Toxin", "Hyaluronic Acid dermal filler", "Laser Resurfacing", "Microneedling"],
+        "article_count": 26800,
+    },
+    {
+        "category": "Botulinum Toxin Cosmetic",
+        "mesh_code": "D03.438.221.173",
+        "ta": "Aesthetics — Neurotoxins",
+        "pubmed_query": '"Botulinum Toxin Type A" AND cosmetic AND medline[sb]',
+        "ctgov_queries": ["Botulinum Toxin", "Glabellar Lines", "Facial Wrinkles"],
+        "article_count": 1339,
+    },
+    {
+        "category": "Dermal Fillers and Hyaluronic Acid",
+        "mesh_code": "E04.540.225",
+        "ta": "Aesthetics — Fillers",
+        "pubmed_query": '("Dermal Fillers" OR "Hyaluronic Acid") AND face AND medline[sb]',
+        "ctgov_queries": ["Hyaluronic Acid dermal filler", "Dermal Fillers", "Nasolabial Fold"],
+        "article_count": 40238,
+    },
+    {
+        "category": "Laser and Energy-Based Devices",
+        "mesh_code": "E02.840.310",
+        "ta": "Aesthetics — Laser/IPL/RF",
+        "pubmed_query": '("Laser Resurfacing" OR "Intense Pulsed Light" OR "Radiofrequency" AND skin) AND medline[sb]',
+        "ctgov_queries": ["Laser Resurfacing", "Radiofrequency Skin", "Intense Pulsed Light"],
+        "article_count": 8025,
+    },
+    {
+        "category": "Microneedling and PRP",
+        "mesh_code": "E04.540.930",
+        "ta": "Aesthetics — Microneedling/PRP",
+        "pubmed_query": '"Microneedling" OR ("Platelet-Rich Plasma" AND skin) AND medline[sb]',
+        "ctgov_queries": ["Microneedling", "Platelet-Rich Plasma skin"],
+        "article_count": 7118,
+    },
+    {
+        "category": "Cosmetic Surgery",
+        "mesh_code": "E04.540.250",
+        "ta": "Aesthetics — Surgical",
+        "pubmed_query": '"Rhytidectomy" OR "Blepharoplasty" OR "Liposuction" OR "Abdominoplasty" OR "Fat Grafting" AND medline[sb]',
+        "ctgov_queries": ["Rhytidectomy", "Blepharoplasty", "Liposuction", "Abdominoplasty"],
+        "article_count": 26719,
+    },
+    {
+        "category": "Skin Aging and Photoaging",
+        "mesh_code": "C17.800.871",
+        "ta": "Aesthetics — Anti-aging",
+        "pubmed_query": '("Skin Aging" OR "Photoaging") AND treatment AND medline[sb]',
+        "ctgov_queries": ["Skin Aging", "Photoaging", "Wrinkles"],
+        "article_count": 29411,
+    },
+    {
+        "category": "Pigmentation and Rosacea",
+        "mesh_code": "C17.800.681",
+        "ta": "Aesthetics — Pigment/Vascular",
+        "pubmed_query": '("Melasma" OR "Rosacea") AND treatment AND medline[sb]',
+        "ctgov_queries": ["Melasma", "Rosacea"],
+        "article_count": 8064,
+    },
 ]
 
 # Import paths
@@ -77,6 +161,10 @@ def get_rotation_target(lead_targets: list, max_results: int = 50) -> list:
     Deduplicates: if the rotation category already exists in lead_targets,
     the rotation category is skipped (avoid double-pulling the same TA).
     
+    v2.0: Rotation entries now include a `pubmed_query` field with the
+    optimized PubMed search string. If present, it is used instead of
+    the bare category name.
+    
     Args:
         lead_targets: List of disease/condition strings from BioCrawler leads.
         max_results: Max PubMed results per target (default 50).
@@ -85,22 +173,23 @@ def get_rotation_target(lead_targets: list, max_results: int = 50) -> list:
         Deduplicated list of target strings for PubMed search.
     """
     rotation = get_current_category()
-    rotation_target = rotation["category"]
+    rotation_target = rotation.get("pubmed_query") or rotation["category"]
+    rotation_label = rotation["category"]
     
     # Normalize for dedup: check if rotation category (or close match) is already in leads
     normalized_leads = [t.lower().strip() for t in lead_targets]
-    rotation_normalized = rotation_target.lower().strip()
+    rotation_normalized = rotation_label.lower().strip()
     
     # Check exact and partial matches
     already_covered = False
     for lead in normalized_leads:
         if rotation_normalized in lead or lead in rotation_normalized:
             already_covered = True
-            log.info(f"Rotation target '{rotation_target}' already covered by lead target '{lead}' — skipping duplicate")
+            log.info(f"Rotation target '{rotation_label}' already covered by lead target '{lead}' — skipping duplicate")
             break
     
     if already_covered:
-        log.info(f"Tier 2 dedup: '{rotation_target}' already in Tier 1 targets. Using Tier 1 only.")
+        log.info(f"Tier 2 dedup: '{rotation_label}' already in Tier 1 targets. Using Tier 1 only.")
         targets = list(lead_targets)
     else:
         targets = list(lead_targets) + [rotation_target]
@@ -108,7 +197,7 @@ def get_rotation_target(lead_targets: list, max_results: int = 50) -> list:
     
     # Log the merge decision
     log.info(f"Rotation: Week {get_week_index()+1}/{len(MESH_ROTATION)} — "
-             f"{rotation['mesh_code']} {rotation['category']} ({rotation['ta']}) — "
+             f"{rotation['mesh_code']} {rotation_label} ({rotation['ta']}) — "
              f"Targets: {len(targets)} (Tier1: {len(lead_targets)}, Tier2: 1 if not deduped else 0)")
     
     return targets

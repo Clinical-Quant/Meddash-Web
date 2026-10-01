@@ -3,7 +3,7 @@ import urllib.parse
 import urllib.error
 import json
 import time
-import sqlite3
+import sqlite3  # kept for legacy fallback
 import re
 import argparse
 import random
@@ -17,6 +17,7 @@ DEVOPS_DIR = Path(__file__).resolve().parent.parent / "07_DevOps_Observability"
 sys.path.insert(0, str(DEVOPS_DIR))
 
 from paths import DB_PATHS, SUMMARY_DIR, ENGINE_PATHS
+from supabase_writer import get_pg_engine, upsert_row, insert_batch_pg
 try:
     import telegram_notifier
     if os.environ.get("DISABLE_INTERNAL_TELEGRAM") == "1":
@@ -24,65 +25,21 @@ try:
 except ImportError:
     telegram_notifier = None
 
-VERSION = "1.4.0"
+VERSION = "2.0.0"  # migrated to Supabase
 
 class BioCrawler:
     def __init__(self, db_path=None):
-        self.db_path = db_path or str(DB_PATHS["biocrawler"])
+        self.db_path = db_path or str(DB_PATHS["biocrawler"])  # legacy fallback
         # ClinicalTrials.gov API v2 base URL
         self.ct_api_url = "https://clinicaltrials.gov/api/v2/studies"
+        # Supabase connection (single source of truth)
+        self.pg_engine = get_pg_engine()
         self._init_db()
 
     def _init_db(self):
-        """Initializes the SQLite database with the idempotent schema."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS biotech_leads (
-                    company_slug TEXT PRIMARY KEY,
-                    company_name TEXT NOT NULL,
-                    primary_indication TEXT,
-                    trial_phases TEXT,
-                    trial_nct_id TEXT,
-                    country TEXT,
-                    website_url TEXT DEFAULT NULL,
-                    recent_funding_signal BOOLEAN DEFAULT 0,
-                    active_hiring_signal BOOLEAN DEFAULT 0,
-                    tier TEXT,
-                    ticker TEXT DEFAULT NULL,
-                    date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_tier ON biotech_leads(tier)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_country ON biotech_leads(country)')
-            
-            # Create the associated_kols table matching the Meddash kols schema perfectly
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS associated_kols (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    first_name TEXT NOT NULL,
-                    last_name TEXT NOT NULL,
-                    degree TEXT,
-                    institution TEXT,
-                    specialty TEXT,
-                    country TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # Create junction table linking Biotech Company ID (slug) to KOL ID
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS biotech_associated_kols (
-                    company_slug TEXT,
-                    kol_id INTEGER,
-                    PRIMARY KEY (company_slug, kol_id),
-                    FOREIGN KEY (company_slug) REFERENCES biotech_leads(company_slug) ON DELETE CASCADE,
-                    FOREIGN KEY (kol_id) REFERENCES associated_kols(id) ON DELETE CASCADE
-                )
-            ''')
-            conn.commit()
+        """Ensures Supabase tables exist. SQLite init kept as legacy fallback only."""
+        # Tables already exist in Supabase from migration — no schema changes needed.
+        pass
 
     def _generate_slug(self, company_name):
         """Standardizes company names into unique slugs for deduplication."""
@@ -94,28 +51,21 @@ class BioCrawler:
         return ' '.join(slug.split())
 
     def _upsert_lead(self, record):
-        """Idempotent insert or update into the SQLite database."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO biotech_leads (
-                    company_slug, company_name, primary_indication, trial_phases, 
-                    trial_nct_id, country, website_url, recent_funding_signal, 
-                    active_hiring_signal, tier, ticker
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(company_slug) DO UPDATE SET 
-                    recent_funding_signal = excluded.recent_funding_signal,
-                    active_hiring_signal = excluded.active_hiring_signal,
-                    website_url = excluded.website_url,
-                    tier = excluded.tier,
-                    ticker = COALESCE(excluded.ticker, biotech_leads.ticker),
-                    last_updated = CURRENT_TIMESTAMP
-            ''', (
-                record['company_slug'], record['company_name'], record['primary_indication'],
-                record['trial_phases'], record['trial_nct_id'], record['country'],
-                record.get('website_url'), record['recent_funding_signal'],
-                record['active_hiring_signal'], record['tier'], record.get('ticker')
-            ))
+        """Upsert lead to Supabase (single source of truth)."""
+        with self.pg_engine.connect() as conn:
+            upsert_row(conn, "biotech_leads", {
+                "company_slug": record["company_slug"],
+                "company_name": record["company_name"],
+                "primary_indication": record["primary_indication"],
+                "trial_phases": record["trial_phases"],
+                "trial_nct_id": record["trial_nct_id"],
+                "country": record["country"],
+                "website_url": record.get("website_url"),
+                "recent_funding_signal": record["recent_funding_signal"],
+                "active_hiring_signal": record["active_hiring_signal"],
+                "tier": record["tier"],
+                "ticker": record.get("ticker"),
+            }, pk="company_slug")
             conn.commit()
 
     def fetch_clinical_trials(self, limit_per_term=None, mesh_override="", phases="", statuses="", date_from="", date_to=""):

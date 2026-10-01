@@ -27,7 +27,7 @@ Tables populated (in one pass per trial):
 import json
 import logging
 import os
-import sqlite3
+import sqlite3  # kept for initialize_ct_db fallback only
 import sys
 import time
 import argparse
@@ -35,7 +35,11 @@ from datetime import datetime, timezone
 
 from ct_initializer import initialize_ct_db, get_ct_db_stats
 
-DB_FILE  = r"C:\Users\email\.gemini\antigravity\Meddash_organized_backend\06_Shared_Datastores\ct_trials.db"
+# ── Supabase writer (single source of truth) ──
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "07_DevOps_Observability"))
+from supabase_writer import get_pg_engine, upsert_row, insert_batch_pg
+
+DB_FILE  = r"C:\Users\email\.gemini\antigravity\Meddash_organized_backend\06_Shared_Datastores\ct_trials.db"  # legacy fallback
 RAW_DIR  = "ct_raw_json"
 BATCH_SIZE = 500   # Commit every N trials
 
@@ -338,40 +342,32 @@ def parse_results(nct_id: str, study: dict) -> list[dict]:
     return rows
 
 
-# ── SQL writers ───────────────────────────────────────────────────────────────
+# ── SQL writers (Supabase Postgres) ──────────────────────────────────────────
 
-def upsert_trial(cur: sqlite3.Cursor, row: dict) -> None:
-    cur.execute("""
-        INSERT OR REPLACE INTO trials (
-            nct_id, brief_title, official_title, brief_summary,
-            study_type, overall_status, why_stopped, why_stopped_category,
-            phase, start_date, completion_date, primary_completion_date,
-            first_posted_date, last_update_posted,
-            enrollment, enrollment_type, allocation, intervention_model,
-            primary_purpose, trial_url, raw_json_path, updated_at
-        ) VALUES (
-            :nct_id, :brief_title, :official_title, :brief_summary,
-            :study_type, :overall_status, :why_stopped, :why_stopped_category,
-            :phase, :start_date, :completion_date, :primary_completion_date,
-            :first_posted_date, :last_update_posted,
-            :enrollment, :enrollment_type, :allocation, :intervention_model,
-            :primary_purpose, :trial_url, :raw_json_path, :updated_at
-        )
-    """, row)
+def upsert_trial(conn, row: dict) -> None:
+    """Upsert trial row to Supabase. conn is a SQLAlchemy connection."""
+    upsert_row(conn, "trials", row, pk="nct_id")
 
 
-def insert_batch(cur: sqlite3.Cursor, table: str, rows: list[dict],
-                 unique_cols: list[str]) -> None:
-    """INSERT OR IGNORE a list of row dicts into a table."""
+def insert_batch(conn, table: str, rows: list[dict],
+                 unique_cols: list[str] = None) -> None:
+    """Insert batch to Supabase. conn is a SQLAlchemy connection.
+    Uses ON CONFLICT DO NOTHING (was INSERT OR IGNORE in SQLite)."""
     if not rows:
         return
-    cols = list(rows[0].keys())
-    placeholders = ", ".join(f":{c}" for c in cols)
-    col_list = ", ".join(cols)
-    cur.executemany(
-        f"INSERT OR IGNORE INTO {table} ({col_list}) VALUES ({placeholders})",
-        rows
-    )
+    # Determine PK from table name
+    pk_map = {
+        "trial_conditions": "id",
+        "trial_interventions": "id",
+        "trial_sponsors": "id",
+        "trial_sites": "id",
+        "trial_investigators": "id",
+        "trial_outcomes": "id",
+        "trial_results": "id",
+        "trial_publications": "id",
+    }
+    pk = pk_map.get(table, "id")
+    insert_batch_pg(conn, table, rows, pk=pk, skip_on_conflict=True)
 
 
 # ── Main ingestion loop ───────────────────────────────────────────────────────
@@ -379,29 +375,25 @@ def insert_batch(cur: sqlite3.Cursor, table: str, rows: list[dict],
 def ingest_all(raw_dir: str = RAW_DIR, db_path: str = DB_FILE,
                limit: int = 0) -> dict:
     """
-    Main ingestion loop. Reads all JSON files in raw_dir and writes to db_path.
+    Main ingestion loop. Reads all JSON files in raw_dir and writes to Supabase.
     Returns summary statistics.
 
     Args:
         raw_dir:  Path to directory of {nct_id}.json files
-        db_path:  Path to ct_trials.db
+        db_path: Legacy SQLite path (used for initialize_ct_db fallback only)
         limit:    Process only this many files (0 = all)
     """
     if not os.path.isdir(raw_dir):
         log.error(f"Raw JSON directory not found: {raw_dir}")
         return {}
 
-    # Ensure DB exists
-    initialize_ct_db(db_path)
-
     files = [f for f in os.listdir(raw_dir) if f.endswith(".json")]
     total  = min(len(files), limit) if limit else len(files)
     log.info(f"Found {len(files):,} JSON files. Processing {total:,}.")
 
-    conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    cur  = conn.cursor()
+    # ── Supabase connection (single source of truth) ──
+    engine = get_pg_engine()
+    pg_conn = engine.connect()
 
     processed = 0
     errors    = 0
@@ -433,36 +425,26 @@ def ingest_all(raw_dir: str = RAW_DIR, db_path: str = DB_FILE,
             elig_row    = parse_eligibility(nct_id, ps)
             results     = parse_results(nct_id, study)
 
-            # ── Write to DB ────────────────────────────────────────────────
-            upsert_trial(cur, trial_row)
+            # ── Write to Supabase ─────────────────────────────────────────
+            upsert_trial(pg_conn, trial_row)
 
-            insert_batch(cur, "trial_conditions",    conditions,    ["nct_id", "condition"])
-            insert_batch(cur, "trial_interventions",  interventions, ["nct_id", "intervention_name"])
-            insert_batch(cur, "trial_sponsors",       sponsors,      ["nct_id", "sponsor_name", "is_lead"])
-            insert_batch(cur, "trial_sites",          sites,         ["nct_id", "facility_name", "city", "country"])
-            insert_batch(cur, "trial_investigators",  investigators, ["nct_id", "investigator_name", "role"])
-            insert_batch(cur, "trial_outcomes",       outcomes,      ["nct_id", "outcome_type", "measure"])
-            insert_batch(cur, "trial_publications",   publications,  ["nct_id", "pmid"])
-            insert_batch(cur, "trial_results",        results,       ["nct_id", "outcome_title"])
+            insert_batch(pg_conn, "trial_conditions",    conditions)
+            insert_batch(pg_conn, "trial_interventions",  interventions)
+            insert_batch(pg_conn, "trial_sponsors",       sponsors)
+            insert_batch(pg_conn, "trial_sites",          sites)
+            insert_batch(pg_conn, "trial_investigators",   investigators)
+            insert_batch(pg_conn, "trial_outcomes",        outcomes)
+            insert_batch(pg_conn, "trial_publications",   publications)
+            insert_batch(pg_conn, "trial_results",         results)
 
             if elig_row:
-                cur.execute("""
-                    INSERT OR IGNORE INTO trial_eligibility (
-                        nct_id, raw_criteria, min_age, max_age, sex,
-                        healthy_volunteers, biomarkers_required,
-                        prior_treatment_required, disease_stage, llm_processed
-                    ) VALUES (
-                        :nct_id, :raw_criteria, :min_age, :max_age, :sex,
-                        :healthy_volunteers, :biomarkers_required,
-                        :prior_treatment_required, :disease_stage, :llm_processed
-                    )
-                """, elig_row)
+                upsert_row(pg_conn, "trial_eligibility", elig_row, pk="nct_id")
 
             processed += 1
 
             # Batch commit
             if processed % BATCH_SIZE == 0:
-                conn.commit()
+                pg_conn.commit()
                 elapsed = time.time() - start
                 rate    = processed / elapsed
                 eta_s   = (total - processed) / rate if rate > 0 else 0
@@ -479,9 +461,10 @@ def ingest_all(raw_dir: str = RAW_DIR, db_path: str = DB_FILE,
         except Exception as e:
             log.error(f"Unexpected error processing {filename}: {e}")
             errors += 1
+            pg_conn.rollback()
 
-    conn.commit()
-    conn.close()
+    pg_conn.commit()
+    pg_conn.close()
 
     elapsed = time.time() - start
     return {

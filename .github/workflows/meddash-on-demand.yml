@@ -1,0 +1,125 @@
+name: Meddash On-Demand TA Pull
+
+on:
+  workflow_dispatch:
+    inputs:
+      disease:
+        description: 'Therapeutic area / disease name (e.g., "NSCLC", "Melanoma")'
+        required: true
+        default: 'NSCLC'
+      ta_profile:
+        description: 'TA search profile for CT query (glp1_metabolic, nsclc_targeted, aesthetic_botox, etc.)'
+        required: false
+        default: ''
+      ct_phase:
+        description: 'CT.gov phase filter (PHASE1, PHASE2, PHASE3, PHASE4) — space-separated for multiple'
+        required: false
+        default: ''
+      max_results:
+        description: 'Max PubMed results to pull'
+        required: false
+        default: '50'
+      run_scholar:
+        description: 'Run scholar enrichment after KOL pull? (true/false)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_URI: ${{ secrets.SUPABASE_URI }}
+  SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+  DISABLE_INTERNAL_TELEGRAM: '1'
+  PYTHONPATH: ${{ github.workspace }}/Meddash_organized_backend/07_DevOps_Observability
+
+jobs:
+  kol-pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Meddash_organized_backend/requirements.txt
+          pip install biopython
+
+      - name: Run KOL Query Engine (profile or custom PubMed search)
+        working-directory: Meddash_organized_backend/01_KOL_Data_Engine
+        run: |
+          if [ -n "${{ github.event.inputs.ta_profile }}" ]; then
+            python kol_query_engine.py --profile "${{ github.event.inputs.ta_profile }}"
+          else
+            PUB_FLAG=""
+            if [ -n "${{ github.event.inputs.ct_phase }}" ]; then
+              case "${{ github.event.inputs.ct_phase }}" in
+                PHASE1|PHASE2|PHASE3|PHASE4) PUB_FLAG="--pub-types clinical_trial" ;;
+              esac
+            fi
+            python kol_query_engine.py --custom "${{ github.event.inputs.disease }}" $PUB_FLAG --max-results ${{ github.event.inputs.max_results }}
+          fi
+
+  ct-query:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Meddash_organized_backend/requirements.txt
+
+      - name: Run CT Query Engine (profile or custom)
+        working-directory: Meddash_organized_backend/02_CT_Data_Engine
+        run: |
+          if [ -n "${{ github.event.inputs.ta_profile }}" ]; then
+            python ct_query_engine.py --profile "${{ github.event.inputs.ta_profile }}" --all-conditions
+          else
+            PHASE_FLAG=""
+            if [ -n "${{ github.event.inputs.ct_phase }}" ]; then
+              PHASE_FLAG="--phase ${{ github.event.inputs.ct_phase }}"
+            fi
+            python ct_query_engine.py --custom "${{ github.event.inputs.disease }}" $PHASE_FLAG --study-type INTERVENTIONAL
+          fi
+
+  clone-after-pull:
+    needs: [kol-pull, ct-query]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Meddash_organized_backend/requirements.txt
+
+      - name: Run Daily Clone
+        working-directory: Meddash_organized_backend/07_DevOps_Observability
+        run: |
+          python daily_clone.py
+
+      - name: Upload SQLite clones
+        uses: actions/upload-artifact@v4
+        with:
+          name: on-demand-clones
+          path: Meddash_organized_backend/06_Shared_Datastores/clones/*.db
+          retention-days: 7

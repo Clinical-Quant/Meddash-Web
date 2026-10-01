@@ -1,0 +1,181 @@
+name: Meddash Daily Pipeline
+
+on:
+  schedule:
+    # 6:00 AM UTC = 2:00 AM EST (daily crawl)
+    - cron: '0 6 * * *'
+  workflow_dispatch:  # Manual trigger from GitHub UI
+    inputs:
+      targets:
+        description: 'Therapeutic area targets (comma-separated, or "default" for 5)'
+        required: false
+        default: 'default'
+      max_results:
+        description: 'Max PubMed results per target'
+        required: false
+        default: '5'
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_URI: ${{ secrets.SUPABASE_URI }}
+  SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+  DISABLE_INTERNAL_TELEGRAM: '1'
+  PYTHONPATH: ${{ github.workspace }}/Meddash_organized_backend/07_DevOps_Observability
+
+jobs:
+  # ── Job 1: KOL Data Engine ──
+  kol-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Meddash_organized_backend/requirements.txt
+          pip install biopython
+
+      - name: Run KOL Nightly Scheduler
+        working-directory: Meddash_organized_backend/01_KOL_Data_Engine
+        run: |
+          python nightly_scheduler.py \
+            --max-targets 5 \
+            --max-results 5 \
+            --skip-disambiguation \
+            --skip-weights \
+            --json-summary
+
+      - name: Upload KOL summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kol-summary
+          path: Meddash_organized_backend/06_Shared_Datastores/pipeline_summaries/kol_pipeline_summary.json
+          retention-days: 30
+
+  # ── Job 2: CT Delta Crawler ──
+  ct-delta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Meddash_organized_backend/requirements.txt
+
+      - name: Run CT Delta Crawler
+        working-directory: Meddash_organized_backend/02_CT_Data_Engine
+        run: |
+          python ct_crawler.py --mode delta --hours 24
+
+      - name: Run CT Ingestion (writes to Supabase)
+        working-directory: Meddash_organized_backend/02_CT_Data_Engine
+        run: |
+          python ct_ingestion.py
+
+      - name: Upload CT summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ct-summary
+          path: Meddash_organized_backend/06_Shared_Datastores/pipeline_summaries/ct_crawler_summary.json
+          retention-days: 30
+
+  # ── Job 3: BioCrawler ──
+  biocrawler:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Meddash_organized_backend/requirements.txt
+
+      - name: Run BioCrawler
+        working-directory: Meddash_organized_backend/03_BioCrawler_GTM
+        run: |
+          python biocrawler.py --mode test
+
+  # ── Job 4: Daily Clone (runs after all engines complete) ──
+  daily-clone:
+    needs: [kol-engine, ct-delta, biocrawler]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Meddash_organized_backend/requirements.txt
+
+      - name: Run Daily Clone (Supabase to SQLite)
+        working-directory: Meddash_organized_backend/07_DevOps_Observability
+        run: |
+          python daily_clone.py
+
+      - name: Upload SQLite clones
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-clones
+          path: Meddash_organized_backend/06_Shared_Datastores/clones/*.db
+          retention-days: 7
+          compression-level: 6
+
+  # ── Job 5: Health Check ──
+  health-check:
+    needs: [kol-engine, ct-delta, biocrawler, daily-clone]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Meddash_organized_backend/requirements.txt
+
+      - name: Generate Health Report
+        working-directory: Meddash_organized_backend/07_DevOps_Observability
+        run: |
+          python meddash_pipeline_runner.py health
+
+      - name: Upload health report
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-report
+          path: |
+            Meddash_organized_backend/06_Shared_Datastores/pipeline_summaries/*.json
+          retention-days: 30
