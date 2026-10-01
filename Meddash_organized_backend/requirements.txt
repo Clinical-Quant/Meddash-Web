@@ -7,3 +7,4 @@ pandas
 sqlalchemy
 biopython
 requests
+psycopg[binary]
