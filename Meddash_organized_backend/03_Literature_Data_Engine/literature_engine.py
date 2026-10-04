@@ -241,7 +241,7 @@ def search_openalex(query: str, max_results: int = 100,
     filter_str = ",".join(filters)
 
     results = []
-    cursor = ""
+    cursor = "*"  # OpenAlex returns next_cursor only in cursor mode.
     total_hits = 0
 
     while len(results) < max_results:
@@ -250,9 +250,8 @@ def search_openalex(query: str, max_results: int = 100,
             "filter": filter_str,
             "per-page": min(200, max_results - len(results)),
             "mailto": CONTACT_EMAIL,
+            "cursor": cursor,
         }
-        if cursor:
-            params["cursor"] = cursor
 
         data = safe_request(f"{OPENALEX_BASE}/works", params=params)
         if not data:
