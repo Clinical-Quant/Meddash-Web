@@ -65,6 +65,9 @@ CLONE_FILES = {
         "brief_requests", "user_profiles", "user_credits",
         "credit_transactions", "system_changelog",
     ],
+    "literature_clone.db": [
+        "literature_results", "literature_query_log",
+    ],
     "ontology_clone.db": [
         "ontology_crosswalk", "ontology_icd10", "ontology_mesh", "ontology_snomed",
     ],
