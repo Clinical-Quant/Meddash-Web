@@ -15,6 +15,7 @@ Usage:
     python edgar_catalyst_crawler.py --dry-run                # No Supabase write
     python edgar_catalyst_crawler.py --smoke-test             # 2 tickers, dry-run
     python edgar_catalyst_crawler.py --create-schema          # Run SQL migration
+    python edgar_catalyst_crawler.py --clean                  # Delete all rows
 
 Spec: [[EDGAR-Catalyst-Crawler]] (edgar-crawler-spec.md v2)
 """
@@ -28,7 +29,7 @@ import argparse
 import logging
 import urllib.request
 import urllib.parse
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
 
 # ── Path setup ──
@@ -53,6 +54,34 @@ EDGAR_HEADERS = {
 REQUEST_DELAY = 0.15  # ~6.7 req/s, well under SEC's 10 req/s limit
 DEFAULT_WATCHLIST = ["MRK", "VTRS", "INO", "CAPR", "BBIO", "PRAX", "COGT", "PFE"]
 SMOKE_TICKERS = ["MRK", "BBIO"]
+LOOKBACK_DAYS = 365  # Backfill 12 months
+
+# ── Watchlist asset alias map (ticker → {alias: canonical_name}) ──
+ASSET_ALIASES = {
+    "BBIO": {"bbp-418": "ribitol", "ribitol": "ribitol", "bpb-418": "ribitol",
+             "encaleret": "encaleret", "neladenoson": "neladenoson",
+             "acdenoson": "acdenoson", "bmx-001": "bmx-001"},
+    "CAPR": {"cap-1002": "deramiocel", "deramiocel": "deramiocel",
+             "celdar": "celdar"},
+    "INO": {"ino-3107": "INO-3107", "ino-4800": "INO-4800",
+            "ino-4700": "INO-4700", "vgx-3100": "VGX-3100"},
+    "COGT": {"cgt1145": "bezuclastinib", "bezuclastinib": "bezuclastinib",
+             "cgt-1145": "bezuclastinib", "blu-281": "bezuclastinib"},
+    "PRAX": {"prax-562": "relutrigine", "relutrigine": "relutrigine",
+             "prax-628": "ulsacrine", "ulsacrine": "ulsacrine",
+             "prax-114": "PRAX-114"},
+    "PFE": {"mr-141": "MR-141", "i-dxd": "I-DXd", "elranatamab": "elranatamab",
+             "zavegepant": "zavegepant", "tafamidis": "tafamidis",
+             "vypadca": "vypadca", "abrysvo": "abrysvo",
+             "sular": "sular", "quviviq": "quviviq",
+             "migraine": "zavegepant", "prevnar": "prevnar",
+             "pomalyst": "pomalyst", "vyndaqel": "tafamidis"},
+    "MRK": {"pembrolizumab": "pembrolizumab", "keytruda": "pembrolizumab",
+            "welireg": "belzutifan", "belzutifan": "belzutifan",
+            "winrevair": "sotatercept", "sotatercept": "sotatercept",
+            "capvaxive": "capvaxive", "v116": "capvaxive"},
+    "VTRS": {"amlodipine": "amlodipine", "atorvastatin": "atorvastatin"},
+}
 
 # ── Regex patterns (case-insensitive, from spec) ──
 RE_PDUFA = re.compile(
@@ -63,8 +92,21 @@ RE_PDUFA_EXTENSION = re.compile(
     r'extend\w*?.{0,60}?PDUFA.{0,60}?from\s+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})\s+to\s+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})',
     re.IGNORECASE | re.DOTALL
 )
+# Broadened: catch "top-line data expected Q4 2026" AND "in the last quarter of 2026"
+# AND "second half of 2026" AND quarter/half references tied to action dates
 RE_READOUT_WINDOW = re.compile(
-    r'(?:top-line|topline)\s+data\s+(?:expected|anticipated).{0,60}?(Q[1-4]\s+\d{4}|H[12]\s+\d{4})',
+    r'(?:top-line|topline|top line|readout|data)\s+(?:data\s+)?(?:expected|anticipated|due|slated|planned).{0,60}?'
+    r'(Q[1-4]\s+\d{4}|H[12]\s+\d{4}|'
+    r'(?:first|second|third|fourth|last)\s+quarter\s+(?:of\s+)?\d{4}|'
+    r'(?:first|second)\s+half\s+(?:of\s+)?\d{4})',
+    re.IGNORECASE | re.DOTALL
+)
+# Also catch standalone "PDUFA ... in Q4 2026" / "approval in H2 2026"
+RE_WINDOW_NEAR_PDUFA = re.compile(
+    r'PDUFA.{0,100}?'
+    r'(Q[1-4]\s+\d{4}|H[12]\s+\d{4}|'
+    r'(?:first|second|third|fourth|last)\s+quarter\s+(?:of\s+)?\d{4}|'
+    r'(?:first|second)\s+half\s+(?:of\s+)?\d{4})',
     re.IGNORECASE | re.DOTALL
 )
 RE_ADCOM = re.compile(
@@ -80,13 +122,16 @@ RE_CRL = re.compile(
     re.IGNORECASE
 )
 
-# Asset/indication extraction helpers
-RE_ASSET_CONTEXT = re.compile(
-    r'(?:drug|product|candidate|therapy|compound|agent)\s+(?:called\s+|named\s+|known\s+as\s+)?([A-Z]{2,}[0-9]?\w*(?:\s*\([\w-]+\))?)',
-    re.IGNORECASE
-)
-RE_INDICATION_CONTEXT = re.compile(
-    r'(?:for|in|treating|treatment\s+of)\s+(?:patients?\s+(?:with|suffering\s+from)\s+)?([A-Z][a-zA-Z]+(?:\s+[a-zA-Z]+){0,4})',
+# ── Asset extraction patterns ──
+# Drug code patterns: XXX-### or XXX#### (e.g., BBP-418, MK-8748, INO-3107)
+RE_DRUG_CODE_DASH = re.compile(r'\b([A-Z]{2,5}-\d{3,5})\b')
+RE_DRUG_CODE_NODASH = re.compile(r'\b([A-Z]{2,5}\d{3,5})\b')
+# Known drug names (generic/brand) — used for proximity matching, not whole-doc
+RE_DRUG_NAME = re.compile(
+    r'\b(pembrolizumab|nivolumab|tofersen|ribitol|amiloride|lenmeldy|cobomarsen|'
+    r'remdesivir|encaleret|belzutifan|welireg|sotatercept|winrevair|capvaxive|'
+    r'keytruda|opdivo|deramiocel|relutrigine|bezuclastinib|elranatamab|'
+    r'zavegepant|tafamidis|ulsacrine|neladenoson|acdenoson)\b',
     re.IGNORECASE
 )
 
@@ -148,8 +193,13 @@ def fetch_submissions(cik: str) -> dict:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def get_recent_8k_filings(cik: str, max_filings: int = 20) -> list[dict]:
-    """Get recent 8-K filings for a CIK from submissions data."""
+def get_recent_8k_filings(cik: str, max_filings: int = 40,
+                          lookback_days: int = LOOKBACK_DAYS) -> list[dict]:
+    """Get 8-K filings for a CIK within the lookback window.
+
+    Uses the submissions 'recent' block (covers ~1000 most recent filings).
+    Filters by date to ensure 12-month coverage, not just last-N.
+    """
     data = fetch_submissions(cik)
     recent = data.get("filings", {}).get("recent", {})
 
@@ -159,21 +209,86 @@ def get_recent_8k_filings(cik: str, max_filings: int = 20) -> list[dict]:
     primary_docs = recent.get("primaryDocument", [])
     primary_desc = recent.get("primaryDocDescription", [])
 
+    cutoff = (date.today() - timedelta(days=lookback_days)).isoformat()
+
     filings = []
     for i, form in enumerate(forms):
-        if form == "8-K":
-            accession = accession_numbers[i]
-            filings.append({
-                "accession_number": accession,
-                "filing_date": filing_dates[i],
-                "primary_document": primary_docs[i] if i < len(primary_docs) else "",
-                "primary_doc_description": primary_desc[i] if i < len(primary_desc) else "",
-                "cik": cik,
-            })
-            if len(filings) >= max_filings:
-                break
+        if form != "8-K":
+            continue
+        fdate = filing_dates[i] if i < len(filing_dates) else ""
+        if fdate < cutoff:
+            continue
+        accession = accession_numbers[i]
+        filings.append({
+            "accession_number": accession,
+            "filing_date": fdate,
+            "primary_document": primary_docs[i] if i < len(primary_docs) else "",
+            "primary_doc_description": primary_desc[i] if i < len(primary_desc) else "",
+            "cik": cik,
+        })
+        if len(filings) >= max_filings:
+            break
 
     return filings
+
+
+def search_edgar_fulltext(ticker: str, cik: str, terms: list[str],
+                          lookback_days: int = LOOKBACK_DAYS) -> list[dict]:
+    """Use EDGAR full-text search to find 8-K filings matching catalyst terms.
+
+    This supplements the submissions-based lookback by searching across
+    filing history for specific terms like 'PDUFA', 'complete response letter'.
+    """
+    filings = []
+    cutoff = (date.today() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+
+    for term in terms:
+        try:
+            params = {
+                "q": f'"{term}"',
+                "forms": "8-K",
+                "dateRange": f"custom,{cutoff},{date.today().isoformat()}",
+            }
+            query_string = urllib.parse.urlencode(params)
+            url = f"{EDGAR_SEARCH_URL}?{query_string}"
+            req = urllib.request.Request(url, headers=EDGAR_HEADERS)
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+
+            hits = data.get("hits", {}).get("hits", [])
+            for hit in hits:
+                source = hit.get("_source", {})
+                hit_cik = source.get("entity_cik", "").zfill(10)
+                if hit_cik != cik:
+                    continue
+                accession = source.get("accession_no", "")
+                if accession:
+                    filings.append({
+                        "accession_number": accession,
+                        "filing_date": source.get("file_date", ""),
+                        "primary_document": source.get("primary_doc", ""),
+                        "primary_doc_description": "",
+                        "cik": cik,
+                        "_source": "fulltext_search",
+                    })
+            time.sleep(REQUEST_DELAY)
+        except Exception as e:
+            log.warning(f"  Full-text search failed for term '{term}': {str(e)[:60]}")
+
+    return filings
+
+
+def dedupe_filings(filings: list[dict]) -> list[dict]:
+    """Deduplicate filings by accession_number, preferring submissions source."""
+    seen = {}
+    for f in filings:
+        acc = f["accession_number"]
+        if acc not in seen:
+            seen[acc] = f
+        elif "_source" in f and "_source" not in seen[acc]:
+            # Keep the fulltext-found one if submissions didn't have it
+            seen[acc] = f
+    return list(seen.values())
 
 
 def fetch_filing_index(cik: str, accession_number: str) -> dict:
@@ -198,11 +313,13 @@ def fetch_document_text(url: str) -> str:
     text = re.sub(r'&nbsp;', ' ', text)
     text = re.sub(r'&amp;', '&', text)
     text = re.sub(r'&#\d+;', ' ', text)
+    text = re.sub(r'&[a-z]+;', ' ', text)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
 
-def extract_excerpt(full_text: str, match_start: int, match_end: int, context_chars: int = 200) -> str:
+def extract_excerpt(full_text: str, match_start: int, match_end: int,
+                    context_chars: int = 250) -> str:
     """Extract a 1-2 sentence excerpt around a regex match."""
     start = max(0, match_start - context_chars)
     end = min(len(full_text), match_end + context_chars)
@@ -217,15 +334,26 @@ def extract_excerpt(full_text: str, match_start: int, match_end: int, context_ch
 
 def parse_date_string(date_str: str) -> str:
     """Parse 'November 27, 2026' → '2026-11-27'. Return original on failure."""
-    try:
-        dt = datetime.strptime(date_str.strip(), "%B %d, %Y")
-        return dt.strftime("%Y-%m-%d")
-    except ValueError:
+    for fmt in ("%B %d, %Y", "%b %d, %Y", "%B %d %Y", "%b %d %Y"):
         try:
-            dt = datetime.strptime(date_str.strip(), "%b %d, %Y")
+            dt = datetime.strptime(date_str.strip().rstrip(','), fmt)
             return dt.strftime("%Y-%m-%d")
         except ValueError:
-            return date_str.strip()
+            continue
+    return date_str.strip()
+
+
+def normalize_window(window_str: str) -> str:
+    """Normalize window strings to consistent format."""
+    s = window_str.strip()
+    # "last quarter of 2026" → "Q4 2026"
+    s = re.sub(r'(?:fourth|last)\s+quarter\s+(?:of\s+)?(\d{4})', r'Q4 \1', s, flags=re.IGNORECASE)
+    s = re.sub(r'first\s+quarter\s+(?:of\s+)?(\d{4})', r'Q1 \1', s, flags=re.IGNORECASE)
+    s = re.sub(r'second\s+quarter\s+(?:of\s+)?(\d{4})', r'Q2 \1', s, flags=re.IGNORECASE)
+    s = re.sub(r'third\s+quarter\s+(?:of\s+)?(\d{4})', r'Q3 \1', s, flags=re.IGNORECASE)
+    s = re.sub(r'first\s+half\s+(?:of\s+)?(\d{4})', r'H1 \1', s, flags=re.IGNORECASE)
+    s = re.sub(r'second\s+half\s+(?:of\s+)?(\d{4})', r'H2 \1', s, flags=re.IGNORECASE)
+    return s
 
 
 def is_date_in_past(date_str: str) -> bool:
@@ -238,6 +366,88 @@ def is_date_in_past(date_str: str) -> bool:
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# Asset Extraction — proximity-based (fix #2, #4)
+# ═══════════════════════════════════════════════════════════════════════
+
+def _extract_asset_near(doc_text: str, match_start: int, match_end: int,
+                        ticker: str, company: str) -> str:
+    """Extract drug/asset name from the text NEAR a date hit, not whole-document.
+
+    Strategy:
+    1. Check alias map for ticker-specific known assets first (highest priority)
+    2. Search within ±500 chars of the match for drug names in the alias map
+    3. Search within ±500 chars for drug code patterns (XXX-###, XXX####)
+    4. Fall back to UNKNOWN
+
+    Note: We do NOT use a global drug-name regex — that caused Merck's
+    pembrolizumab to appear on Pfizer rows. Only ticker-specific alias
+    entries are checked.
+    """
+    context_start = max(0, match_start - 500)
+    context_end = min(len(doc_text), match_end + 500)
+    context = doc_text[context_start:context_end]
+    context_lower = context.lower()
+
+    # Step 1: Check ticker-specific alias map
+    aliases = ASSET_ALIASES.get(ticker.upper(), {})
+    for alias, canonical in aliases.items():
+        if alias.lower() in context_lower:
+            return canonical
+
+    # Step 2: Skip global drug name search — ticker-specific aliases only
+    # (This prevents cross-company misattribution)
+
+    # Step 3: Search for drug code patterns in the context window
+    for m in RE_DRUG_CODE_DASH.finditer(context):
+        candidate = m.group(1).upper()
+        # Skip exhibit references (EX-99)
+        if candidate.startswith("EX") and "99" in candidate:
+            continue
+        if candidate in ("HTTP", "HTTPS", "HTML"):
+            continue
+        # Skip SEC filing-like codes (too many digits)
+        if len(candidate) > 10:
+            continue
+        return candidate
+
+    for m in RE_DRUG_CODE_NODASH.finditer(context):
+        candidate = m.group(1).upper()
+        if candidate.startswith("EX") and "99" in candidate:
+            continue
+        if candidate in ("HTTP", "HTTPS", "HTML"):
+            continue
+        if len(candidate) > 10:
+            continue
+        return candidate
+
+    return "UNKNOWN"
+
+
+def _extract_indication_near(doc_text: str, match_start: int, match_end: int) -> str:
+    """Extract indication from text NEAR a date hit."""
+    context_start = max(0, match_start - 400)
+    context_end = min(len(doc_text), match_end + 400)
+    context = doc_text[context_start:context_end]
+
+    contexts = [
+        re.compile(r'(?:treatment\s+of|for\s+the\s+treatment\s+of)\s+([a-zA-Z][a-zA-Z\s]{3,40}?)(?:[.,;]|based|in\s+(?:the\s+)?U\.S|Phase)', re.IGNORECASE),
+        re.compile(r'patients?\s+(?:with|suffering\s+from)\s+([a-zA-Z][a-zA-Z\s]{3,40}?)(?:[.,;]|based|Phase|who)', re.IGNORECASE),
+        re.compile(r'(?:for|in)\s+(?:adults?\s+(?:with|suffering\s+from)\s+)?([a-zA-Z][a-zA-Z\s]{3,40}?)(?:[.,;]|based|Phase)', re.IGNORECASE),
+    ]
+    for ctx in contexts:
+        m = ctx.search(context)
+        if m:
+            indication = m.group(1).strip()
+            lower = indication.lower()
+            if any(bad in lower for bad in ["the company", "this", "its", "total second",
+                                             "oncology and animal", "news release", "the treatment"]):
+                continue
+            if len(indication) > 5:
+                return indication
+    return None
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # Catalyst Extraction
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -245,17 +455,25 @@ def extract_catalysts_from_text(
     doc_text: str, ticker: str, cik: str, company: str,
     accession_number: str, filing_date: str, filing_index_url: str
 ) -> list[dict]:
-    """Extract catalyst events from filing document text using regex patterns."""
+    """Extract catalyst events from filing document text using regex patterns.
+
+    Asset and indication are extracted from the context NEAR each date hit,
+    not from the whole document. This prevents Merck's drug from appearing
+    on Pfizer rows.
+    """
     catalysts = []
 
     def make_event(event_type: str, date_or_window: str, date_precision: str,
-                   excerpt: str, priority_review: bool = False) -> dict:
+                   excerpt: str, match_start: int, match_end: int,
+                   priority_review: bool = False) -> dict:
+        asset = _extract_asset_near(doc_text, match_start, match_end, ticker, company)
+        indication = _extract_indication_near(doc_text, match_start, match_end)
         return {
             "company": company,
             "ticker": ticker,
             "cik": cik,
-            "asset": _extract_asset(doc_text, ticker),
-            "indication": _extract_indication(doc_text),
+            "asset": asset,
+            "indication": indication,
             "event_type": event_type,
             "date_or_window": date_or_window,
             "date_precision": date_precision,
@@ -272,7 +490,7 @@ def extract_catalysts_from_text(
         old_date = parse_date_string(m.group(1))
         new_date = parse_date_string(m.group(2))
         excerpt = extract_excerpt(doc_text, m.start(), m.end())
-        catalysts.append(make_event("PDUFA", new_date, "exact", excerpt))
+        catalysts.append(make_event("PDUFA", new_date, "exact", excerpt, m.start(), m.end()))
         log.info(f"    PDUFA EXTENSION: {old_date} → {new_date}")
 
     # PDUFA date (skip if already found via extension)
@@ -281,32 +499,42 @@ def extract_catalysts_from_text(
         for m in RE_PDUFA.finditer(doc_text):
             parsed = parse_date_string(m.group(1))
             excerpt = extract_excerpt(doc_text, m.start(), m.end())
-            # Check for priority review nearby
             nearby = doc_text[max(0, m.start()-300):m.end()+300]
             priority = "priority review" in nearby.lower()
-            catalysts.append(make_event("PDUFA", parsed, "exact", excerpt, priority))
+            catalysts.append(make_event("PDUFA", parsed, "exact", excerpt, m.start(), m.end(), priority))
             log.info(f"    PDUFA date: {parsed}")
 
-    # Readout window
+    # Readout window — broadened to catch quarter/half references
     for m in RE_READOUT_WINDOW.finditer(doc_text):
-        window = m.group(1).strip()
+        raw_window = m.group(1).strip()
+        window = normalize_window(raw_window)
         excerpt = extract_excerpt(doc_text, m.start(), m.end())
-        catalysts.append(make_event("readout_window", window, "window", excerpt))
+        catalysts.append(make_event("readout_window", window, "window", excerpt, m.start(), m.end()))
         log.info(f"    Readout window: {window}")
+
+    # Also catch "PDUFA ... in Q4 2026" style (window near PDUFA mention)
+    for m in RE_WINDOW_NEAR_PDUFA.finditer(doc_text):
+        raw_window = m.group(1).strip()
+        window = normalize_window(raw_window)
+        # Only add if not already captured as exact PDUFA date
+        if not any(c["event_type"] == "PDUFA" for c in catalysts):
+            excerpt = extract_excerpt(doc_text, m.start(), m.end())
+            catalysts.append(make_event("PDUFA", window, "window", excerpt, m.start(), m.end()))
+            log.info(f"    PDUFA window: {window}")
 
     # AdCom
     for m in RE_ADCOM.finditer(doc_text):
         parsed = parse_date_string(m.group(1))
         excerpt = extract_excerpt(doc_text, m.start(), m.end())
-        catalysts.append(make_event("AdCom", parsed, "exact", excerpt))
+        catalysts.append(make_event("AdCom", parsed, "exact", excerpt, m.start(), m.end()))
         log.info(f"    AdCom date: {parsed}")
 
-    # Approval — only capture once per filing (avoid duplicates from pipeline update docs)
+    # Approval — only capture once per filing
     approval_found = False
     for m in RE_APPROVAL.finditer(doc_text):
         if not approval_found:
             excerpt = extract_excerpt(doc_text, m.start(), m.end())
-            catalysts.append(make_event("approval", filing_date, "exact", excerpt))
+            catalysts.append(make_event("approval", filing_date, "exact", excerpt, m.start(), m.end()))
             log.info(f"    FDA approval mention on {filing_date}")
             approval_found = True
 
@@ -315,7 +543,7 @@ def extract_catalysts_from_text(
     for m in RE_CRL.finditer(doc_text):
         if not crl_found:
             excerpt = extract_excerpt(doc_text, m.start(), m.end())
-            catalysts.append(make_event("CRL", filing_date, "exact", excerpt))
+            catalysts.append(make_event("CRL", filing_date, "exact", excerpt, m.start(), m.end()))
             log.info(f"    CRL mention on {filing_date}")
             crl_found = True
 
@@ -329,59 +557,6 @@ def extract_catalysts_from_text(
             unique.append(c)
 
     return unique
-
-
-def _extract_asset(doc_text: str, ticker: str) -> str:
-    """Try to extract drug/asset name from filing text."""
-    # Skip exhibit boilerplate (EX-99.1, EXHIBIT 99, etc.)
-    # Look for known drug names first (case-insensitive)
-    known_drugs = [
-        "pembrolizumab", "nivolumab", "tofersen", "ribitol", "amiloride",
-        "lenmeldy", "cobomarsen", "remdesivir", "encaleret", "welireg",
-        "keytruda", "opdivo", "winrevair", "capvaxive",
-    ]
-    for drug in known_drugs:
-        if drug in doc_text.lower():
-            return drug.capitalize()
-
-    # Look for drug code patterns: XXX-### or XXX#### (e.g., BBP-418, MK-8748)
-    # Skip EX-99 (exhibit numbers) and SEC filing codes
-    patterns = [
-        re.compile(r'\b([A-Z]{2,4}-\d{3,4})\b'),  # BBP-418, MK-8748
-        re.compile(r'\b([A-Z]{2,5}\d{2,4})\b'),   # AB1234 (no dash)
-    ]
-    for p in patterns:
-        for m in p.finditer(doc_text):
-            candidate = m.group(1)
-            # Skip EX-99 (exhibit references) and common false positives
-            if candidate.upper().startswith("EX") and "99" in candidate:
-                continue
-            # Skip if it looks like a filing code (all caps + many digits)
-            if candidate.upper() in ("HTTP", "HTTPS", "HTML"):
-                continue
-            return candidate
-    return "UNKNOWN"
-
-
-def _extract_indication(doc_text: str) -> str:
-    """Try to extract indication from filing text."""
-    # Try to find indication near PDUFA/approval context
-    # Look for patterns like "for the treatment of X" or "patients with X"
-    contexts = [
-        re.compile(r'(?:treatment\s+of|for\s+the\s+treatment\s+of)\s+([a-zA-Z][a-zA-Z\s]{3,40}?)(?:[.,;]|based|in\s+(?:the\s+)?U\.S|Phase)', re.IGNORECASE),
-        re.compile(r'patients?\s+(?:with|suffering\s+from)\s+([a-zA-Z][a-zA-Z\s]{3,40}?)(?:[.,;]|based|Phase|who)', re.IGNORECASE),
-    ]
-    for ctx in contexts:
-        m = ctx.search(doc_text)
-        if m:
-            indication = m.group(1).strip()
-            # Filter out false positives
-            lower = indication.lower()
-            if any(bad in lower for bad in ["the company", "this", "its", "total second", "oncology and animal", "news release"]):
-                continue
-            if len(indication) > 5:
-                return indication
-    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -400,7 +575,6 @@ def process_filing(filing: dict, ticker: str, cik: str, company: str) -> list[di
     all_catalysts = []
 
     try:
-        # Fetch the filing index to find all documents
         index_data = fetch_filing_index(cik, accession)
         items = index_data.get("directory", {}).get("item", [])
 
@@ -409,10 +583,8 @@ def process_filing(filing: dict, ticker: str, cik: str, company: str) -> list[di
         for item in items:
             name = item.get("name", "")
             if name.endswith(".htm") or name.endswith(".html"):
-                # Skip index files
                 if "index" in name.lower():
                     continue
-                # Prioritize: primary 8-K body + EX-99 press release exhibits
                 name_lower = name.lower()
                 is_primary = (name == filing.get("primary_document"))
                 is_exhibit = ("ex-99" in name_lower or "ex99" in name_lower or
@@ -422,7 +594,6 @@ def process_filing(filing: dict, ticker: str, cik: str, company: str) -> list[di
                     docs_to_parse.append((name, doc_url))
 
         if not docs_to_parse:
-            # Fallback: parse all non-index HTM documents
             for item in items:
                 name = item.get("name", "")
                 if (name.endswith(".htm") or name.endswith(".html")) and "index" not in name.lower():
@@ -469,14 +640,11 @@ def create_schema():
 
     engine = get_pg_engine()
     with engine.connect() as conn:
-        # Execute the full SQL as one statement block
-        # Remove comment-only lines and split on semicolons at end of statements
         lines = sql.split("\n")
         statements = []
         current = []
         for line in lines:
             stripped = line.strip()
-            # Skip comment-only lines
             if stripped.startswith("--"):
                 continue
             current.append(line)
@@ -498,20 +666,57 @@ def create_schema():
     log.info("Schema created: catalyst_events + edgar_query_log")
 
 
+def clean_table():
+    """Delete all rows from catalyst_events (for re-ingestion after fixes)."""
+    engine = get_pg_engine()
+    with engine.connect() as conn:
+        conn.execute(text("DELETE FROM catalyst_events"))
+        conn.commit()
+    log.info("Cleaned all rows from catalyst_events")
+
+
 def ingest_to_supabase(catalysts: list[dict]) -> dict:
-    """Upsert catalyst events to Supabase catalyst_events table."""
+    """Upsert catalyst events to Supabase catalyst_events table.
+
+    Fix #3: When a new row has asset=UNKNOWN but an existing row with the same
+    (ticker, event_type, date_or_window) already has a resolved asset, skip the
+    UNKNOWN row instead of creating a duplicate with a different composite key.
+    """
     if not catalysts:
-        return {"ingested": 0, "errors": 0}
+        return {"ingested": 0, "errors": 0, "skipped_unknown": 0}
 
     engine = get_pg_engine()
     conn = engine.connect()
 
+    # Fetch existing rows to check for UNKNOWN merge (fix #3)
+    existing_rows = {}
+    try:
+        r = conn.execute(text(
+            "SELECT ticker, asset, event_type, date_or_window FROM catalyst_events"
+        ))
+        for row in r.fetchall():
+            key = (row[0], row[2], row[3])  # (ticker, event_type, date_or_window)
+            existing_rows[key] = row[1]  # asset
+    except Exception:
+        pass  # Table might be empty
+
     ingested = 0
     errors = 0
+    skipped_unknown = 0
 
     for catalyst in catalysts:
         try:
-            # Build row dict (exclude 'id' — let Supabase auto-generate)
+            # Fix #3: Skip UNKNOWN rows when a resolved asset already exists
+            # for the same (ticker, event_type, date_or_window)
+            merge_key = (catalyst["ticker"], catalyst["event_type"], catalyst["date_or_window"])
+            if catalyst["asset"] == "UNKNOWN" and merge_key in existing_rows:
+                existing_asset = existing_rows[merge_key]
+                if existing_asset and existing_asset != "UNKNOWN":
+                    log.info(f"  Skip UNKNOWN {catalyst['ticker']} {catalyst['event_type']} — "
+                             f"existing asset: {existing_asset}")
+                    skipped_unknown += 1
+                    continue
+
             row = {
                 "company": catalyst["company"],
                 "ticker": catalyst["ticker"],
@@ -529,8 +734,6 @@ def ingest_to_supabase(catalysts: list[dict]) -> dict:
                 "status": catalyst["status"],
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
-            # Upsert on (ticker, asset, event_type) unique constraint
-            # We need a composite conflict target, so use raw SQL
             cols = list(row.keys())
             col_names = ", ".join([f'"{c}"' for c in cols])
             placeholders = ", ".join([f":{c}" for c in cols])
@@ -543,6 +746,9 @@ def ingest_to_supabase(catalysts: list[dict]) -> dict:
             )
             conn.execute(text(sql), row)
             ingested += 1
+            # Update the in-memory existing map
+            existing_rows[(catalyst["ticker"], catalyst["event_type"],
+                          catalyst["date_or_window"])] = catalyst["asset"]
         except Exception as e:
             errors += 1
             conn.rollback()
@@ -552,7 +758,7 @@ def ingest_to_supabase(catalysts: list[dict]) -> dict:
     conn.commit()
     conn.close()
 
-    return {"ingested": ingested, "errors": errors}
+    return {"ingested": ingested, "errors": errors, "skipped_unknown": skipped_unknown}
 
 
 def log_run(tickers_searched: str, filings_scanned: int, total_found: int,
@@ -579,19 +785,33 @@ def log_run(tickers_searched: str, filings_scanned: int, total_found: int,
 # Main Crawl
 # ═══════════════════════════════════════════════════════════════════════
 
-def run_crawl(tickers: list[str], dry_run: bool = False, max_filings: int = 20) -> dict:
-    """Run the EDGAR catalyst crawl for a list of tickers."""
+def run_crawl(tickers: list[str], dry_run: bool = False, max_filings: int = 40,
+              use_fulltext: bool = True) -> dict:
+    """Run the EDGAR catalyst crawl for a list of tickers.
+
+    Args:
+        tickers: List of ticker symbols
+        dry_run: If True, don't write to Supabase
+        max_filings: Max 8-K filings to scan per ticker
+        use_fulltext: If True, also use EDGAR full-text search to find filings
+    """
     log.info("=" * 60)
     log.info("EDGAR CATALYST CRAWLER — Engine 04")
     log.info(f"Tickers: {', '.join(tickers)}")
     log.info(f"Dry run: {dry_run}")
     log.info(f"Max filings per ticker: {max_filings}")
+    log.info(f"Lookback: {LOOKBACK_DAYS} days")
+    log.info(f"Full-text search: {use_fulltext}")
     log.info("=" * 60)
 
     start_time = time.time()
     all_catalysts = []
     total_filings_scanned = 0
     errors = []
+
+    # Catalyst search terms for full-text search
+    fts_terms = ["PDUFA", "complete response letter", "advisory committee",
+                 "FDA approved", "top-line data"]
 
     for ticker in tickers:
         ticker = ticker.upper().strip()
@@ -610,7 +830,7 @@ def run_crawl(tickers: list[str], dry_run: bool = False, max_filings: int = 20) 
 
         time.sleep(REQUEST_DELAY)
 
-        # Get recent 8-K filings
+        # Step 1: Get 8-K filings from submissions (lookback-filtered)
         try:
             filings = get_recent_8k_filings(cik, max_filings=max_filings)
         except Exception as e:
@@ -618,14 +838,29 @@ def run_crawl(tickers: list[str], dry_run: bool = False, max_filings: int = 20) 
             errors.append(f"{ticker}: submissions fetch failed — {str(e)[:60]}")
             continue
 
-        log.info(f"  Found {len(filings)} recent 8-K filings")
-        total_filings_scanned += len(filings)
+        log.info(f"  Submissions: {len(filings)} 8-K filings in {LOOKBACK_DAYS}d lookback")
 
-        if not filings:
+        # Step 2: Supplement with EDGAR full-text search (fix #1)
+        if use_fulltext:
+            time.sleep(REQUEST_DELAY)
+            fts_filings = search_edgar_fulltext(ticker, cik, fts_terms)
+            if fts_filings:
+                log.info(f"  Full-text search: {len(fts_filings)} additional filings found")
+                # Merge and dedupe
+                all_filings = dedupe_filings(filings + fts_filings)
+            else:
+                all_filings = filings
+        else:
+            all_filings = filings
+
+        log.info(f"  Total unique filings to scan: {len(all_filings)}")
+        total_filings_scanned += len(all_filings)
+
+        if not all_filings:
             continue
 
         # Process each filing
-        for filing in filings:
+        for filing in all_filings:
             time.sleep(REQUEST_DELAY)
             catalysts = process_filing(filing, ticker, cik, company)
             all_catalysts.extend(catalysts)
@@ -639,6 +874,55 @@ def run_crawl(tickers: list[str], dry_run: bool = False, max_filings: int = 20) 
         if key not in deduped or c["filing_date"] > deduped[key]["filing_date"]:
             deduped[key] = c
     all_catalysts = list(deduped.values())
+
+    # Fix #3 pre-ingest: suppress UNKNOWN rows when resolved asset exists
+    # Group by (ticker, event_type, date_or_window) and prefer resolved assets
+    asset_resolved = {}
+    for c in all_catalysts:
+        key = (c["ticker"], c["event_type"], c["date_or_window"])
+        if c["asset"] != "UNKNOWN":
+            asset_resolved[key] = c["asset"]
+
+    # Also build a ticker+event_type → dominant asset map
+    # If all resolved assets for a (ticker, event_type) pair are the same,
+    # use that to fill UNKNOWN rows of the same pair
+    ticker_event_assets = {}
+    for c in all_catalysts:
+        if c["asset"] != "UNKNOWN":
+            key = (c["ticker"], c["event_type"])
+            if key not in ticker_event_assets:
+                ticker_event_assets[key] = set()
+            ticker_event_assets[key].add(c["asset"])
+
+    ticker_event_dominant = {}
+    for key, assets in ticker_event_assets.items():
+        if len(assets) == 1:
+            ticker_event_dominant[key] = assets.pop()
+
+    if asset_resolved or ticker_event_dominant:
+        filtered = []
+        suppressed = 0
+        for c in all_catalysts:
+            key_exact = (c["ticker"], c["event_type"], c["date_or_window"])
+            key_event = (c["ticker"], c["event_type"])
+
+            if c["asset"] == "UNKNOWN":
+                # Exact match on (ticker, event_type, date_or_window)
+                if key_exact in asset_resolved:
+                    log.info(f"  Suppress UNKNOWN {c['ticker']} {c['event_type']} "
+                             f"{c['date_or_window']} — resolved asset: {asset_resolved[key_exact]}")
+                    suppressed += 1
+                    continue
+                # Dominant asset for (ticker, event_type)
+                if key_event in ticker_event_dominant:
+                    dominant = ticker_event_dominant[key_event]
+                    log.info(f"  Fill UNKNOWN {c['ticker']} {c['event_type']} "
+                             f"{c['date_or_window']} — dominant asset: {dominant}")
+                    c["asset"] = dominant
+            filtered.append(c)
+        all_catalysts = filtered
+        if suppressed:
+            log.info(f"  Suppressed {suppressed} UNKNOWN rows in favor of resolved assets")
 
     total_found = len(all_catalysts)
 
@@ -689,8 +973,9 @@ def run_crawl(tickers: list[str], dry_run: bool = False, max_filings: int = 20) 
             "errors": errors,
             "elapsed": elapsed,
         }
-        log_run(result["tickers_searched"], total_filings_scanned, total_found, 0,
-                result["status"], "; ".join(errors) if errors else "")
+        if not dry_run:
+            log_run(result["tickers_searched"], total_filings_scanned, total_found, 0,
+                    result["status"], "; ".join(errors) if errors else "")
         return result
 
     # Write to Supabase
@@ -698,6 +983,7 @@ def run_crawl(tickers: list[str], dry_run: bool = False, max_filings: int = 20) 
     ingest_stats = ingest_to_supabase(all_catalysts)
 
     log.info(f"  Ingested: {ingest_stats['ingested']}")
+    log.info(f"  Skipped UNKNOWN (merged): {ingest_stats.get('skipped_unknown', 0)}")
     log.info(f"  Errors: {ingest_stats['errors']}")
 
     status = "success" if not errors and ingest_stats["errors"] == 0 else "partial"
@@ -746,8 +1032,16 @@ def main():
         help="Run SQL migration to create Supabase tables"
     )
     parser.add_argument(
-        "--max-filings", type=int, default=20,
-        help="Max 8-K filings to scan per ticker (default: 20)"
+        "--clean", action="store_true",
+        help="Delete all rows from catalyst_events before running"
+    )
+    parser.add_argument(
+        "--max-filings", type=int, default=40,
+        help="Max 8-K filings to scan per ticker (default: 40)"
+    )
+    parser.add_argument(
+        "--no-fulltext", action="store_true",
+        help="Disable EDGAR full-text search (submissions only)"
     )
 
     args = parser.parse_args()
@@ -758,6 +1052,11 @@ def main():
         create_schema()
         log.info("Schema creation complete.")
         return
+
+    # Clean mode
+    if args.clean:
+        log.info("Cleaning catalyst_events table...")
+        clean_table()
 
     # Determine tickers
     if args.smoke_test:
@@ -770,7 +1069,8 @@ def main():
         tickers = DEFAULT_WATCHLIST
         dry_run = args.dry_run
 
-    result = run_crawl(tickers, dry_run=dry_run, max_filings=args.max_filings)
+    result = run_crawl(tickers, dry_run=dry_run, max_filings=args.max_filings,
+                       use_fulltext=not args.no_fulltext)
 
     # Print JSON summary for pipeline integration
     print(f"\n{json.dumps(result, indent=2)}")
