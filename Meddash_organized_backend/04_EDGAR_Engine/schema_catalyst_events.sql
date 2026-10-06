@@ -20,6 +20,8 @@ create table if not exists public.catalyst_events (
   filing_date date,
   excerpt text,                          -- 1-2 sentence proof quote
   status text not null default 'upcoming',       -- upcoming | occurred
+  verification_status text not null default 'unverified',  -- verified | rejected | unverified
+  verification_note text,                        -- LLM reasoning for verification decision
   ingested_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (ticker, asset, event_type)      -- the upsert key

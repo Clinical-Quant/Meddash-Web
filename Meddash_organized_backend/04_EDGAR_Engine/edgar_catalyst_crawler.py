@@ -70,12 +70,10 @@ ASSET_ALIASES = {
     "PRAX": {"prax-562": "relutrigine", "relutrigine": "relutrigine",
              "prax-628": "ulsacrine", "ulsacrine": "ulsacrine",
              "prax-114": "PRAX-114"},
-    "PFE": {"mr-141": "MR-141", "i-dxd": "I-DXd", "elranatamab": "elranatamab",
-             "zavegepant": "zavegepant", "tafamidis": "tafamidis",
+    "PFE": {"elranatamab": "elranatamab", "zavegepant": "zavegepant",
+             "tafamidis": "tafamidis", "vyndaqel": "tafamidis",
              "vypadca": "vypadca", "abrysvo": "abrysvo",
-             "sular": "sular", "quviviq": "quviviq",
-             "migraine": "zavegepant", "prevnar": "prevnar",
-             "pomalyst": "pomalyst", "vyndaqel": "tafamidis"},
+             "prevnar": "prevnar", "pomalyst": "pomalyst"},
     "MRK": {"pembrolizumab": "pembrolizumab", "keytruda": "pembrolizumab",
             "welireg": "belzutifan", "belzutifan": "belzutifan",
             "winrevair": "sotatercept", "sotatercept": "sotatercept",
@@ -319,7 +317,7 @@ def fetch_document_text(url: str) -> str:
 
 
 def extract_excerpt(full_text: str, match_start: int, match_end: int,
-                    context_chars: int = 250) -> str:
+                    context_chars: int = 400) -> str:
     """Extract a 1-2 sentence excerpt around a regex match."""
     start = max(0, match_start - context_chars)
     end = min(len(full_text), match_end + context_chars)
@@ -357,12 +355,39 @@ def normalize_window(window_str: str) -> str:
 
 
 def is_date_in_past(date_str: str) -> bool:
-    """Check if a parsed date string is before today."""
+    """Check if a date or window string is before today.
+
+    Handles:
+    - Exact dates: '2026-11-27'
+    - Window dates: 'Q1 2026', 'H1 2027', 'Q4 2025'
+    """
+    # Try exact date first
     try:
         d = datetime.strptime(date_str, "%Y-%m-%d").date()
         return d < date.today()
     except ValueError:
-        return False  # Window dates — assume upcoming
+        pass
+
+    # Window dates — parse quarter/half and year
+    m = re.match(r'Q([1-4])\s+(\d{4})', date_str)
+    if m:
+        q, yr = int(m.group(1)), int(m.group(2))
+        # Q1 ends Mar 31, Q2 ends Jun 30, Q3 ends Sep 30, Q4 ends Dec 31
+        end_dates = {1: (3, 31), 2: (6, 30), 3: (9, 30), 4: (12, 31)}
+        mo, day = end_dates[q]
+        quarter_end = date(yr, mo, day)
+        return quarter_end < date.today()
+
+    m = re.match(r'H([12])\s+(\d{4})', date_str)
+    if m:
+        h, yr = int(m.group(1)), int(m.group(2))
+        # H1 ends Jun 30, H2 ends Dec 31
+        mo, day = (6, 30) if h == 1 else (12, 31)
+        half_end = date(yr, mo, day)
+        return half_end < date.today()
+
+    # Unknown format — assume upcoming (safe default)
+    return False
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -732,6 +757,8 @@ def ingest_to_supabase(catalysts: list[dict]) -> dict:
                 "filing_date": catalyst["filing_date"],
                 "excerpt": catalyst["excerpt"],
                 "status": catalyst["status"],
+                "verification_status": catalyst.get("verification_status", "unverified"),
+                "verification_note": catalyst.get("verification_note"),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             cols = list(row.keys())
@@ -786,7 +813,7 @@ def log_run(tickers_searched: str, filings_scanned: int, total_found: int,
 # ═══════════════════════════════════════════════════════════════════════
 
 def run_crawl(tickers: list[str], dry_run: bool = False, max_filings: int = 40,
-              use_fulltext: bool = True) -> dict:
+              use_fulltext: bool = True, verify: bool = False) -> dict:
     """Run the EDGAR catalyst crawl for a list of tickers.
 
     Args:
@@ -794,6 +821,7 @@ def run_crawl(tickers: list[str], dry_run: bool = False, max_filings: int = 40,
         dry_run: If True, don't write to Supabase
         max_filings: Max 8-K filings to scan per ticker
         use_fulltext: If True, also use EDGAR full-text search to find filings
+        verify: If True, run LLM verification gate on candidates before ingest
     """
     log.info("=" * 60)
     log.info("EDGAR CATALYST CRAWLER — Engine 04")
@@ -926,6 +954,39 @@ def run_crawl(tickers: list[str], dry_run: bool = False, max_filings: int = 40,
 
     total_found = len(all_catalysts)
 
+    # ── Stage 2: LLM Verification Gate ──
+    verify_passed = 0
+    verify_failed = 0
+    if verify and all_catalysts:
+        try:
+            from edgar_llm_verifier import verify_candidates
+            log.info(f"\n--- Stage 2: LLM Verification Gate ({len(all_catalysts)} candidates) ---")
+            verified_results = verify_candidates(all_catalysts)
+
+            # Split into verified and rejected
+            verified_rows = [r for r in verified_results if r["verification_status"] == "verified"]
+            rejected_rows = [r for r in verified_results if r["verification_status"] == "rejected"]
+            error_rows = [r for r in verified_results if r["verification_status"] == "error"]
+
+            verify_passed = len(verified_rows)
+            verify_failed = len(rejected_rows)
+
+            # Keep verified + error rows (errors are unverified, not rejected)
+            # Rejected rows are still ingested but flagged for audit
+            all_catalysts = verified_rows + error_rows + rejected_rows
+
+            log.info(f"  Verified: {verify_passed}")
+            log.info(f"  Rejected: {verify_failed}")
+            log.info(f"  Errors (kept as unverified): {len(error_rows)}")
+
+            # Update total_found after verification
+            total_found = len(all_catalysts)
+
+        except ImportError:
+            log.warning("  edgar_llm_verifier not available — skipping verification")
+        except Exception as e:
+            log.warning(f"  LLM verification failed: {str(e)[:80]} — keeping unverified")
+
     log.info(f"\n{'=' * 60}")
     log.info(f"CRAWL COMPLETE")
     log.info(f"  Tickers searched: {len(tickers)}")
@@ -998,6 +1059,8 @@ def run_crawl(tickers: list[str], dry_run: bool = False, max_filings: int = 40,
         "status": status,
         "errors": errors + ([f"ingest errors: {ingest_stats['errors']}"] if ingest_stats["errors"] else []),
         "elapsed": elapsed,
+        "verified": verify_passed,
+        "rejected": verify_failed,
     }
 
     log_run(result["tickers_searched"], total_filings_scanned, total_found,
@@ -1043,6 +1106,10 @@ def main():
         "--no-fulltext", action="store_true",
         help="Disable EDGAR full-text search (submissions only)"
     )
+    parser.add_argument(
+        "--verify", action="store_true",
+        help="Run LLM verification gate on candidates (Stage 2, requires Ollama)"
+    )
 
     args = parser.parse_args()
 
@@ -1070,7 +1137,7 @@ def main():
         dry_run = args.dry_run
 
     result = run_crawl(tickers, dry_run=dry_run, max_filings=args.max_filings,
-                       use_fulltext=not args.no_fulltext)
+                       use_fulltext=not args.no_fulltext, verify=args.verify)
 
     # Print JSON summary for pipeline integration
     print(f"\n{json.dumps(result, indent=2)}")
