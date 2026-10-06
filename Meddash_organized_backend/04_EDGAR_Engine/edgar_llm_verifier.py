@@ -31,7 +31,7 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 # Mutable model name (can be overridden via _set_model)
-_OLLAMA_MODEL = "deepseek-v4-pro:cloud"
+_OLLAMA_MODEL = "gemma4:31b-cloud"
 
 
 def _set_model(model_name: str):
@@ -275,8 +275,8 @@ def main():
                         help="JSON file with candidate catalyst events")
     parser.add_argument("--output", type=str, default="verified.json",
                         help="Output JSON file with verification results")
-    parser.add_argument("--model", type=str, default="deepseek-v4-pro:cloud",
-                        help="Ollama model (default: deepseek-v4-pro:cloud)")
+    parser.add_argument("--model", type=str, default="gemma4:31b-cloud",
+                        help="Ollama model (default: gemma4:31b-cloud)")
 
     args = parser.parse_args()
 
