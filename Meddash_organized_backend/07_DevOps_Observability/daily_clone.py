@@ -71,6 +71,9 @@ CLONE_FILES = {
     "ontology_clone.db": [
         "ontology_crosswalk", "ontology_icd10", "ontology_mesh", "ontology_snomed",
     ],
+    "catalyst_clone.db": [
+        "catalyst_events", "edgar_query_log",
+    ],
 }
 
 # ── Logging ──

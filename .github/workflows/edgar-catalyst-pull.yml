@@ -1,0 +1,61 @@
+name: EDGAR Catalyst Pull
+
+on:
+  schedule:
+    # 7:00 AM UTC = 3:00 AM EST (runs after daily pipeline at 6 AM UTC)
+    - cron: '0 7 * * *'
+  workflow_dispatch:  # Manual trigger from GitHub UI
+    inputs:
+      tickers:
+        description: 'Comma-separated tickers (default: MRK,VTRS,INO,CAPR,BBIO,PRAX,COGT,PFE)'
+        required: false
+        default: 'MRK,VTRS,INO,CAPR,BBIO,PRAX,COGT,PFE'
+      max_filings:
+        description: 'Max 8-K filings to scan per ticker (default: 20)'
+        required: false
+        default: '20'
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_URI: ${{ secrets.SUPABASE_URI }}
+  DISABLE_INTERNAL_TELEGRAM: '1'
+  PYTHONPATH: ${{ github.workspace }}/Meddash_organized_backend/07_DevOps_Observability
+
+jobs:
+  edgar-catalyst-crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Meddash_organized_backend/requirements.txt
+
+      - name: Create schema (idempotent)
+        working-directory: Meddash_organized_backend/04_EDGAR_Engine
+        run: |
+          python edgar_catalyst_crawler.py --create-schema || true
+
+      - name: Run EDGAR Catalyst Crawler
+        working-directory: Meddash_organized_backend/04_EDGAR_Engine
+        run: |
+          python edgar_catalyst_crawler.py \
+            --tickers "${{ github.event.inputs.tickers || 'MRK,VTRS,INO,CAPR,BBIO,PRAX,COGT,PFE' }}" \
+            --max-filings ${{ github.event.inputs.max_filings || '20' }}
+
+      - name: Upload crawl summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edgar-catalyst-summary
+          path: Meddash_organized_backend/04_EDGAR_Engine/edgar_catalyst_crawler.log
+          retention-days: 30
