@@ -179,8 +179,8 @@ class BioCrawler:
                             "trial_nct_id": nct_id,
                             "country": primary_country,
                             "website_url": None,
-                            "recent_funding_signal": False,
-                            "active_hiring_signal": False,
+                            "recent_funding_signal": 0,
+                            "active_hiring_signal": 0,
                             "tier": "C",
                             "ticker": None
                         }
@@ -211,11 +211,26 @@ class BioCrawler:
     def enrich_missing_websites_via_clearbit(self, limit=10):
         """Uses the free Clearbit Autocomplete API to find official domains for our targets."""
         print(f"Enriching up to {limit} missing websites using Clearbit API...")
-        
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT company_slug, company_name FROM biotech_leads WHERE website_url IS NULL LIMIT ?", (limit,))
-            missing_sites = cursor.fetchall()
+
+        # Use Supabase if available, fall back to SQLite
+        try:
+            from supabase_writer import get_pg_engine
+            from sqlalchemy import text as sql_text
+            engine = get_pg_engine()
+            with engine.connect() as conn:
+                r = conn.execute(sql_text(
+                    "SELECT company_slug, company_name FROM biotech_leads WHERE website_url IS NULL LIMIT :limit"
+                ), {"limit": limit})
+                missing_sites = [(row[0], row[1]) for row in r.fetchall()]
+        except Exception:
+            try:
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT company_slug, company_name FROM biotech_leads WHERE website_url IS NULL LIMIT ?", (limit,))
+                    missing_sites = cursor.fetchall()
+            except Exception:
+                print("  No database available for website enrichment. Skipping.")
+                return
             
             for slug, name in missing_sites:
                 # To maximize Clearbit accuracy, we strip "Therapeutics", "Biosciences", etc.
@@ -270,36 +285,55 @@ class BioCrawler:
                 sec_data = json.loads(response.read().decode('utf-8'))
                 
             # Create a quick dictionary to look up companies by name
-            # SEC names are often strictly formatted (e.g., "ACME ONCOLOGY INC.")
-            # Map: Title -> (CIK, Ticker)
             sec_companies = {v['title'].upper(): (v['cik_str'], v['ticker']) for k, v in sec_data.items()}
             
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT company_slug, company_name FROM biotech_leads LIMIT ?", (limit,))
-                leads = cursor.fetchall()
-                
-                for slug, name in leads:
-                    clean_name = name.upper()
+            # Use Supabase if available, fall back to SQLite
+            try:
+                from supabase_writer import get_pg_engine
+                from sqlalchemy import text as sql_text
+                engine = get_pg_engine()
+                with engine.connect() as conn:
+                    r = conn.execute(sql_text(
+                        "SELECT company_slug, company_name FROM biotech_leads LIMIT :limit"
+                    ), {"limit": limit})
+                    leads = [(row[0], row[1]) for row in r.fetchall()]
                     
-                    # 2. Try to find an exact or partial match in the SEC database
-                    match_found = False
-                    for sec_name, (cik, ticker) in sec_companies.items():
-                        if clean_name in sec_name or sec_name in clean_name:
-                            match_found = True
-                            print(f"  [Funding Signal] SEC match found for {name} (CIK: {cik}, Ticker: {ticker}). They are actively raising/filing.")
-                            
-                            # Update our database to reflect that this company has financial momentum and store the ticker
-                            cursor.execute('''
-                                UPDATE biotech_leads 
-                                SET recent_funding_signal = 1, ticker = ?, last_updated = CURRENT_TIMESTAMP
-                                WHERE company_slug = ?
-                            ''', (ticker, slug))
-                            break
+                    for slug, name in leads:
+                        clean_name = name.upper()
+                        match_found = False
+                        for sec_name, (cik, ticker) in sec_companies.items():
+                            if clean_name in sec_name or sec_name in clean_name:
+                                match_found = True
+                                print(f"  [Funding Signal] SEC match found for {name} (CIK: {cik}, Ticker: {ticker}). They are actively raising/filing.")
+                                conn.execute(sql_text(
+                                    "UPDATE biotech_leads SET recent_funding_signal = 1, ticker = :ticker WHERE company_slug = :slug"
+                                ), {"ticker": ticker, "slug": slug})
+                                break
+                        if not match_found:
+                            print(f"  [Log] No SEC records found for {name}. They may be privately funded without Form D filings.")
+                    conn.commit()
+            except Exception:
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT company_slug, company_name FROM biotech_leads LIMIT ?", (limit,))
+                    leads = cursor.fetchall()
                     
-                    if not match_found:
-                        print(f"  [Log] No SEC records found for {name}. They may be privately funded without Form D filings.")
-                conn.commit()
+                    for slug, name in leads:
+                        clean_name = name.upper()
+                        match_found = False
+                        for sec_name, (cik, ticker) in sec_companies.items():
+                            if clean_name in sec_name or sec_name in clean_name:
+                                match_found = True
+                                print(f"  [Funding Signal] SEC match found for {name} (CIK: {cik}, Ticker: {ticker}). They are actively raising/filing.")
+                                cursor.execute('''
+                                    UPDATE biotech_leads 
+                                    SET recent_funding_signal = 1, ticker = ?, last_updated = CURRENT_TIMESTAMP
+                                    WHERE company_slug = ?
+                                ''', (ticker, slug))
+                                break
+                        if not match_found:
+                            print(f"  [Log] No SEC records found for {name}. They may be privately funded without Form D filings.")
+                    conn.commit()
                 
         except Exception as e:
              print(f"  [Error] Failed to reach SEC EDGAR API: {e}")
@@ -314,11 +348,26 @@ class BioCrawler:
         and check if the page exists!
         """
         print(f"Deep-Crawling Greenhouse/Lever ATS boards for Clinical hiring (Limit: {limit})...")
-        
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT company_slug, company_name FROM biotech_leads LIMIT ?", (limit,))
-            leads = cursor.fetchall()
+
+        # Use Supabase if available, fall back to SQLite
+        try:
+            from supabase_writer import get_pg_engine
+            from sqlalchemy import text as sql_text
+            engine = get_pg_engine()
+            with engine.connect() as conn:
+                r = conn.execute(sql_text(
+                    "SELECT company_slug, company_name FROM biotech_leads LIMIT :limit"
+                ), {"limit": limit})
+                leads = [(row[0], row[1]) for row in r.fetchall()]
+        except Exception:
+            try:
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT company_slug, company_name FROM biotech_leads LIMIT ?", (limit,))
+                    leads = cursor.fetchall()
+            except Exception:
+                print("  No database available for job board scraping. Skipping.")
+                return
             
             for slug, name in leads:
                 # Format the name for URL guessing (e.g., "Acme Oncology" -> "acmeoncology")
@@ -370,11 +419,25 @@ class BioCrawler:
         """Deep-crawl Biotech websites for Scientific Advisory Boards and KOLs."""
         print("Deep-crawling Biotech websites for KOLs and SABs...")
         
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            # Grab leads that have a website identified
-            cursor.execute("SELECT company_slug, company_name, website_url FROM biotech_leads WHERE website_url IS NOT NULL")
-            leads_with_websites = cursor.fetchall()
+        # Use Supabase if available, fall back to SQLite
+        try:
+            from supabase_writer import get_pg_engine
+            from sqlalchemy import text as sql_text
+            engine = get_pg_engine()
+            with engine.connect() as conn:
+                r = conn.execute(sql_text(
+                    "SELECT company_slug, company_name, website_url FROM biotech_leads WHERE website_url IS NOT NULL"
+                ))
+                leads_with_websites = [(row[0], row[1], row[2]) for row in r.fetchall()]
+        except Exception:
+            try:
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT company_slug, company_name, website_url FROM biotech_leads WHERE website_url IS NOT NULL")
+                    leads_with_websites = cursor.fetchall()
+            except Exception:
+                print("  No database available for KOL scraping. Skipping.")
+                return
             
             for slug, name, url in leads_with_websites:
                 # MVP Deep-Crawl Logic: Iterate through company sites to parse "Team", "Leadership", or "SAB" pages.
@@ -408,15 +471,29 @@ class BioCrawler:
     def synthesize_and_export(self):
         """Calculate Tiers within DB (A = Funding+Hiring, B = One of them)."""
         print("\nSynthesizing leads and updating Tiers in Database...")
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            # Tier A
-            cursor.execute("UPDATE biotech_leads SET tier = 'A' WHERE recent_funding_signal = 1 AND active_hiring_signal = 1")
-            # Tier B
-            cursor.execute("UPDATE biotech_leads SET tier = 'B' WHERE (recent_funding_signal = 1 OR active_hiring_signal = 1) AND tier != 'A'")
-            
-            cursor.execute("SELECT COUNT(*) FROM biotech_leads")
-            total = cursor.fetchone()[0]
+        # Use Supabase if available, fall back to SQLite
+        try:
+            from supabase_writer import get_pg_engine
+            from sqlalchemy import text as sql_text
+            engine = get_pg_engine()
+            with engine.connect() as conn:
+                conn.execute(sql_text("UPDATE biotech_leads SET tier = 'A' WHERE recent_funding_signal = 1 AND active_hiring_signal = 1"))
+                conn.execute(sql_text("UPDATE biotech_leads SET tier = 'B' WHERE (recent_funding_signal = 1 OR active_hiring_signal = 1) AND tier != 'A'"))
+                r = conn.execute(sql_text("SELECT COUNT(*) FROM biotech_leads"))
+                total = r.fetchone()[0]
+                conn.commit()
+        except Exception:
+            try:
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE biotech_leads SET tier = 'A' WHERE recent_funding_signal = 1 AND active_hiring_signal = 1")
+                    cursor.execute("UPDATE biotech_leads SET tier = 'B' WHERE (recent_funding_signal = 1 OR active_hiring_signal = 1) AND tier != 'A'")
+                    cursor.execute("SELECT COUNT(*) FROM biotech_leads")
+                    total = cursor.fetchone()[0]
+                    conn.commit()
+            except Exception:
+                print("  No database available for tier synthesis. Skipping.")
+                return
             print(f"Database sync complete. Total leads securely tracked natively: {total}")
 
 import logging
