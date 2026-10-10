@@ -44,6 +44,7 @@ jobs:
         working-directory: Meddash_organized_backend/04_EDGAR_Engine
         run: |
           python edgar_catalyst_crawler.py --create-schema || true
+          python catalyst_data_pipeline.py --create-schema || true
 
       - name: Run EDGAR Catalyst Crawler
         working-directory: Meddash_organized_backend/04_EDGAR_Engine
@@ -52,10 +53,18 @@ jobs:
             --tickers "${{ github.event.inputs.tickers || 'MRK,VTRS,INO,CAPR,BBIO,PRAX,COGT,PFE' }}" \
             --max-filings ${{ github.event.inputs.max_filings || '20' }}
 
+      - name: Run Catalyst Data Pipeline (P0 sources)
+        working-directory: Meddash_organized_backend/04_EDGAR_Engine
+        run: |
+          python catalyst_data_pipeline.py \
+            --tickers "${{ github.event.inputs.tickers || 'MRK,VTRS,INO,CAPR,BBIO,PRAX,COGT,PFE' }}"
+
       - name: Upload crawl summary
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: edgar-catalyst-summary
-          path: Meddash_organized_backend/04_EDGAR_Engine/edgar_catalyst_crawler.log
+          path: |
+            Meddash_organized_backend/04_EDGAR_Engine/edgar_catalyst_crawler.log
+            Meddash_organized_backend/04_EDGAR_Engine/catalyst_data_pipeline.log
           retention-days: 30

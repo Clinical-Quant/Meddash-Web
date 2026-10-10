@@ -73,6 +73,12 @@ CLONE_FILES = {
     ],
     "catalyst_clone.db": [
         "catalyst_events", "edgar_query_log",
+        # 4th pillar — catalyst data pipeline (SEQ-0049)
+        "entities", "ticker_history", "corporate_actions",
+        "catalyst_detections", "catalyst_raw_filings",
+        "catalyst_raw_releases", "catalyst_raw_trials",
+        "catalyst_raw_regulatory", "catalyst_events_master",
+        "entity_review_queue", "ticker_diff_state",
     ],
 }
 
