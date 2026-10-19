@@ -83,12 +83,16 @@ CLONE_FILES = {
 }
 
 # ── Logging ──
+# Ensure logs directory exists (critical for CI environments where logs/ is gitignored)
+_log_dir = BASE_DIR / "07_DevOps_Observability" / "logs"
+_log_dir.mkdir(parents=True, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(str(BASE_DIR / "07_DevOps_Observability" / "logs" / "daily_clone.log")),
+        logging.FileHandler(str(_log_dir / "daily_clone.log")),
     ],
 )
 log = logging.getLogger(__name__)
